@@ -4,7 +4,11 @@ using MPSKit
 using MPSKitModels
 using LinearAlgebra: norm
 
-print(zeros(5))
+a = zeros(5)
+b = ones(5)
+println(norm(b-a))
+
+println(real(1+2im))
 
 D = 4
 j = 2
