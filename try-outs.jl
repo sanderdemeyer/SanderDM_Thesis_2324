@@ -4,6 +4,66 @@ using MPSKit
 using MPSKitModels
 using LinearAlgebra: norm
 
+using LinearAlgebra
+using Base
+using JLD2
+using MPSKitModels, TensorKit, MPSKit
+using Statistics
+
+include("get_groundstate_energy.jl")
+include("get_thirring_hamiltonian.jl")
+include("get_thirring_hamiltonian_symmetric.jl")
+
+mass = 0
+g = -1
+delta_g = cos((pi-g)/2)
+println(delta_g)
+D_bond = 20
+
+
+#=
+mu_old = 0.1
+magnetization_old = -0.3
+
+mu_new = 0.01
+magnetization_new = 0.3836
+
+while abs(magnetization_new) > 0.02
+    global mu_new
+    global mu_old
+    global magnetization_old
+    global magnetization_new
+    println("mu_new is $mu_new")
+    println("magnetization_new is $magnetization_new")
+    (gs_energy, magnetization_newest) = get_groundstate_energy(mass, delta_g, 0, mu_new, D_bond)
+    mu_newest = mu_new - magnetization_new*(mu_new-mu_old)/(magnetization_new-magnetization_old)
+    magnetization_old = magnetization_new
+    mu_old = mu_new
+    magnetization_new = magnetization_newest
+    mu_new = mu_newest
+end
+=#
+
+(gs_energy, _) = get_groundstate_energy(mass, delta_g, 0, 0, D_bond)
+print("hrere")
+println(gs_energy)
+println((gs_energy[1][1] + gs_energy[2][1])/2)
+
+#=
+D_values = [floor(Int, 25*(2^(i/2))) for i = 1:8]
+
+D_values = [floor(Int, 12.5*(2^(i/2))) for i = 2:9]
+
+println(D_values)
+
+delta_gs = [0.5, 0.375, 0.25, 0.125, 0, -0.2, -0.4, -0.6, -0.8, -1]
+gs = LinRange(-1.5, 1.5, 13)
+println([e for e = gs])
+delta_gs = cos.((pi.-gs)/2)
+
+println(gs)
+println(delta_gs)
+
 a = zeros(5)
 b = ones(5)
 println(norm(b-a))
@@ -34,7 +94,7 @@ print(typeof(op))
 println("jkfjkdqlmfqdsjkflmjfqklsmjf")
 println(op)
 println(op_new)
-
+=#
 
 #=
 
@@ -119,4 +179,16 @@ pspace = ComplexSpace(size(S_x_mat, 1))
 println(size(S_x_mat))
 =#
 
-println("D = ", 60)
+#=
+@mpoham begin
+    sum(nearest_neighbours(lattice)) do (i, j)
+        return (σˣˣ() + σʸʸ()){i, j}
+        return (σˣ(){i}*σˣ(){j} + σʸ(){i}*σʸ(){j})
+    end
+end
+{
+    "name": "MethodError",
+    "message": "MethodError: no method matching *(::LocalOperator{TrivialTensorMap{ComplexSpace, 2, 2, Matrix{ComplexF64}}, LatticePoint{1, FiniteChain}}, ::LocalOperator{TrivialTensorMap{ComplexSpace, 2, 2, Matrix{ComplexF64}}, LatticePoint{1, FiniteChain}})\n\nClosest candidates are:\n  *(::Any, ::Any, !Matched::Any, !Matched::Any...)\n   @ Base operators.jl:578\n  *(!Matched::Union{InitialValues.NonspecificInitialValue, InitialValues.SpecificInitialValue{typeof(*)}}, ::Any)\n   @ InitialValues ~/.julia/packages/InitialValues/OWP8V/src/InitialValues.jl:154\n  *(!Matched::Union{MPSKit.AC2_EffProj, MPSKit.AC_EffProj}, ::Any)\n   @ MPSKit ~/.julia/packages/MPSKit/fz0C5/src/algorithms/derivatives.jl:294\n  ...\n",
+    "stack": "MethodError: no method matching *(::LocalOperator{TrivialTensorMap{ComplexSpace, 2, 2, Matrix{ComplexF64}}, LatticePoint{1, FiniteChain}}, ::LocalOperator{TrivialTensorMap{ComplexSpace, 2, 2, Matrix{ComplexF64}}, LatticePoint{1, FiniteChain}})\n\nClosest candidates are:\n  *(::Any, ::Any, !Matched::Any, !Matched::Any...)\n   @ Base operators.jl:578\n  *(!Matched::Union{InitialValues.NonspecificInitialValue, InitialValues.SpecificInitialValue{typeof(*)}}, ::Any)\n   @ InitialValues ~/.julia/packages/InitialValues/OWP8V/src/InitialValues.jl:154\n  *(!Matched::Union{MPSKit.AC2_EffProj, MPSKit.AC_EffProj}, ::Any)\n   @ MPSKit ~/.julia/packages/MPSKit/fz0C5/src/algorithms/derivatives.jl:294\n  ...\n\n\nStacktrace:\n  [1] (::Main.TDMPOHamiltonianTools.var\"#2#4\"{Matrix{Float64}, Int64, Int64})(::Pair{LatticePoint{1, FiniteChain}, LatticePoint{1, FiniteChain}})\n    @ Main.TDMPOHamiltonianTools ~/Documents/UGent/Ma2/Thesis-Code/Pulse Hamiltonians/TDMPOHam.jl:37\n  [2] _mapreduce(f::Main.TDMPOHamiltonianTools.var\"#2#4\"{Matrix{Float64}, Int64, Int64}, op::typeof(Base.add_sum), #unused#::IndexLinear, A::Vector{Pair{LatticePoint{1, FiniteChain}, LatticePoint{1, FiniteChain}}})\n    @ Base ./reduce.jl:435\n  [3] _mapreduce_dim(f::Function, op::Function, #unused#::Base._InitialValue, A::Vector{Pair{LatticePoint{1, FiniteChain}, LatticePoint{1, FiniteChain}}}, #unused#::Colon)\n    @ Base ./reducedim.jl:365\n  [4] #mapreduce#800\n    @ ./reducedim.jl:357 [inlined]\n  [5] mapreduce\n    @ ./reducedim.jl:357 [inlined]\n  [6] #_sum#810\n    @ ./reducedim.jl:999 [inlined]\n  [7] _sum(f::Function, a::Vector{Pair{LatticePoint{1, FiniteChain}, LatticePoint{1, FiniteChain}}}, ::Colon)\n    @ Base ./reducedim.jl:999\n  [8] #sum#808\n    @ ./reducedim.jl:995 [inlined]\n  [9] sum\n    @ ./reducedim.jl:995 [inlined]\n [10] TDMPOHam(pulse_matrix::Matrix{Float64}, update_times::Vector{Float64}, lattice::FiniteChain)\n    @ Main.TDMPOHamiltonianTools ~/Documents/UGent/Ma2/Thesis-Code/Pulse Hamiltonians/TDMPOHam.jl:31\n [11] TDMPOHam(qc::PyObject)\n    @ Main.TDMPOHamiltonianTools ~/Documents/UGent/Ma2/Thesis-Code/Pulse Hamiltonians/TDMPOHam.jl:51\n [12] top-level scope\n    @ ~/Documents/UGent/Ma2/Thesis-Code/Pulse Hamiltonians/TimeStepError.ipynb:2"
+}
+=#
