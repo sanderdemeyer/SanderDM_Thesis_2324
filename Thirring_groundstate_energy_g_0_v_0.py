@@ -8,11 +8,13 @@ import csv
 
 # f = h5py.File("SanderDM_Thesis_2324/Thirring_groundstate_energy_g_0_v_0", "r")
 f = h5py.File("Thirring_groundstate_energy_g_0_v_0", "r")
+f = h5py.File("Check_mass_symmetric_D_30", "r")
 m_range = 20
 masses = np.linspace(0,1,m_range)
-energies = f["energies"][:]
-energies = [(energies[0,i][0]+energies[1,i][0])/2 for i in range(m_range)]
-# masses = f["masses"]
+#energies = f["energies"][:]
+#energies = [(energies[0,i][0]+energies[1,i][0])/2 for i in range(m_range)]
+
+energies = f["Energies"][:]
 
 
 print(energies)

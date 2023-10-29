@@ -15,10 +15,52 @@ include("get_thirring_hamiltonian.jl")
 include("get_thirring_hamiltonian_symmetric.jl")
 
 mass = 0
-g = -1
+g = -2
 delta_g = cos((pi-g)/2)
+delta_g = 2
 println(delta_g)
-D_bond = 20
+D_bond = 50
+# (gs_energy, _) = get_groundstate_energy(mass, delta_g, 0, 0, D_bond)
+println("hrere")
+# println(gs_energy)
+
+
+amount = 28
+Delta_g_range = LinRange(-1, 6, amount)
+
+amount = 20
+mass_range = LinRange(0, 1, amount)
+
+Energies = Array{Float64, 2}(undef, 1, amount)
+
+for index = 1:amount
+    mass = mass_range[index]
+    println("mass is $mass")
+    (gs_energy, _) = get_groundstate_energy(mass, 0, 0, 0, D_bond)
+    println("Energy is $gs_energy")
+    Energies[index] = real(gs_energy)
+end
+
+println(Energies)
+
+@save "Check_mass_symmetric_D_30" mass_range Energies
+
+# Energies = Array{Float64, 2}(undef, 1, D_number)
+# Correlation_lengths = Array{Float64, 2}(undef, 1, D_number)
+
+#=
+for i = 1:D_number
+    D = i*150
+    println("D = ", D)
+    (gs_energy, gs_correlation_length) = get_groundstate_energy(am_tilde_0, Delta_g, 0, D)
+    #gs = get_groundstate_energy(am_tilde_0, Delta_g, D)
+    Energies[i] = real(gs_energy[0] + gs_energy[1])/2
+    println(Energies[i])
+    #Correlation_lengths[i] = gs_correlation_length
+end
+=#
+
+
 
 
 #=
@@ -43,11 +85,6 @@ while abs(magnetization_new) > 0.02
     mu_new = mu_newest
 end
 =#
-
-(gs_energy, _) = get_groundstate_energy(mass, delta_g, 0, 0, D_bond)
-print("hrere")
-println(gs_energy)
-println((gs_energy[1][1] + gs_energy[2][1])/2)
 
 #=
 D_values = [floor(Int, 25*(2^(i/2))) for i = 1:8]

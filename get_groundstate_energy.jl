@@ -8,8 +8,9 @@ function get_groundstate_energy(am_tilde_0, Delta_g, v, mu, D)
 
     #Symmetric:
     pspace = U1Space(i => 1 for i in (-spin):spin)
-    vspace = U1Space(1 => D, 1//2 => D, 0 => D, -1//2 => D, -1 => D)
-    state = InfiniteMPS([pspace, pspace], [vspace, vspace])
+    vspace_L = U1Space(1//2 => D, -1//2 => D)
+    vspace_R = U1Space(1 => D, 0 => D, -1 => D)
+    state = InfiniteMPS([pspace, pspace], [vspace_L, vspace_R])
     println(typeof(pspace))
     println(typeof(:U1))
 
@@ -23,18 +24,25 @@ function get_groundstate_energy(am_tilde_0, Delta_g, v, mu, D)
     println(typeof(state))
     println(typeof(hamiltonian))
 
-    (groundstate,_) = find_groundstate(state,hamiltonian,VUMPS(maxiter = 25))
+    (groundstate,_) = find_groundstate(state,hamiltonian,VUMPS(maxiter = 30))
 
+    println("Done with VUMPS")
     # one = expectation_value(groundstate, identity_op)
 
     # xi = expectation_value(groundstate, xi_operator)
 
-    magnetization = expectation_value(groundstate, S_z())
+
+    gs_energy = expectation_value(groundstate, hamiltonian)
+    gs_energy = (gs_energy[1]+gs_energy[2])/2
+
+    println("Gs_energy is $gs_energy")
+
+    S_z_symm = TensorMap([0.5+0.0im 0.0+0.0im; 0.0+0.0im -0.5+0.0im], pspace, pspace)
+
+    magnetization = expectation_value(groundstate, S_z_symm)
     magnetization = (magnetization[1]+magnetization[2])/2
     println("Magnetization is $magnetization")
 
-    gs_energy = expectation_value(groundstate, hamiltonian)
-    
     # S⁺ = TensorMap([0.0 1.0; 0.0 0.0], ℂ^2, ℂ^2)
     # S⁻ = TensorMap([0.0 0.0; 1.0 0.0], ℂ^2, ℂ^2)
 
