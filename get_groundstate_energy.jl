@@ -1,28 +1,52 @@
 include("correlation_function.jl")
 using Dates
 
-function get_groundstate_energy(am_tilde_0, Delta_g, v, mu, D)
-    spin = 1//2
-    # For a given bond dimension, calculate the ground state energy of the Thirring model with given parameters
-    state = InfiniteMPS([ℂ^2, ℂ^2],[ℂ^D, ℂ^D])
+function get_groundstate_energy(am_tilde_0, Delta_g, v, D, symmetric = true)
+    if symmetric
+        println("symmetric")
+        spin = 1//2
+        pspace = U1Space(i => 1 for i in (-spin):spin)
+        vspace_L = U1Space(1//2 => D, -1//2 => D, 3//2 => D, -3//2 => D)
+        vspace_L = U1Space(1//2 => D, -1//2 => D, 3//2 => D, -3//2 => D, 5//2 => D/2, -5//2 => D/2)
+        vspace_R = U1Space(2 => D, 1 => D, 0 => D, -1 => D, -2 => D)
+        vspace_R = U1Space(3 => D/2, 2 => D, 1 => D, 0 => D, -1 => D, -2 => D, -3 => D/2)
+        state = InfiniteMPS([pspace, pspace], [vspace_L, vspace_R])
 
-    #Symmetric:
-    pspace = U1Space(i => 1 for i in (-spin):spin)
-    vspace_L = U1Space(1//2 => D, -1//2 => D)
-    vspace_R = U1Space(1 => D, 0 => D, -1 => D)
-    state = InfiniteMPS([pspace, pspace], [vspace_L, vspace_R])
-    println(typeof(pspace))
-    println(typeof(:U1))
+        hamiltonian = get_thirring_hamiltonian_symmetric(am_tilde_0, Delta_g, v)
+
+        data = Array{ComplexF64, 2}(undef, 8, 8)
+        data[2,5] = 0.5 + 0.0im
+        data[4,7] = -0.5 + 0.0im
+        data[5,2] = -0.5 + 0.0im
+        data[7,4] = 0.5 + 0.0im
+    
+        three_site_operator = TensorMap(data, pspace ⊗ pspace ⊗ pspace, pspace ⊗ pspace ⊗ pspace)
+        v_term = @mpoham (im*v/2) * sum(three_site_operator{i, i + 1, i + 2} for i in vertices(InfiniteChain(2)))
+
+        else
+            println("asymmetric")
+        pspace = ℂ^2
+        vspace_L = ℂ^D
+        vspace_R = ℂ^D
+        state = InfiniteMPS([ℂ^2, ℂ^2],[ℂ^D, ℂ^D])
+        hamiltonian = get_thirring_hamiltonian(am_tilde_0, Delta_g, v)
+
+        S⁺ = TensorMap([0.0+0.0im 1.0+0.0im; 0.0+0.0im 0.0+0.0im], ℂ^2, ℂ^2)
+        S⁻ = TensorMap([0.0+0.0im 0.0+0.0im; 1.0+0.0im 0.0+0.0im], ℂ^2, ℂ^2)
+    
+        Interaction_v_term_1 = @mpoham (im*v/2) * sum(S⁺{i}*S_z(){i+1}*S⁻{i+2} for i in vertices(InfiniteChain(2))) 
+        Interaction_v_term_2 = @mpoham (im*v/2) * sum(S⁻{i}*S_z(){i+1}*S⁺{i+2} for i in vertices(InfiniteChain(2))) 
+        v_term = Interaction_v_term_1 - Interaction_v_term_2
+    
+    end
+        # For a given bond dimension, calculate the ground state energy of the Thirring model with given parameters
 
     # hamiltonian = get_thirring_hamiltonian(am_tilde_0, Delta_g, v, mu)
-    hamiltonian = get_thirring_hamiltonian_symmetric(am_tilde_0, Delta_g, v, mu)
 
     # identity_op = @mpoham sum(id(domain(S_z())){i} for i in vertices(InfiniteChain(2)))
 
     # J = [1.0 -1.0]
     # xi_operator = @mpoham sum(J[i] * S_z(){i} for i in vertices(InfiniteChain(2)))
-    println(typeof(state))
-    println(typeof(hamiltonian))
 
     (groundstate,_) = find_groundstate(state,hamiltonian,VUMPS(maxiter = 30))
 
@@ -42,6 +66,9 @@ function get_groundstate_energy(am_tilde_0, Delta_g, v, mu, D)
     magnetization = expectation_value(groundstate, S_z_symm)
     magnetization = (magnetization[1]+magnetization[2])/2
     println("Magnetization is $magnetization")
+
+    v_term_energy = expectation_value(groundstate, v_term)
+    println("v_term energy is $v_term_energy")
 
     # S⁺ = TensorMap([0.0 1.0; 0.0 0.0], ℂ^2, ℂ^2)
     # S⁻ = TensorMap([0.0 0.0; 1.0 0.0], ℂ^2, ℂ^2)

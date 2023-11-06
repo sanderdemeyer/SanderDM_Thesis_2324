@@ -54,3 +54,5 @@ function correlation_function(mps, O₁, middle, O₂, max_dist::Int = 200)
     end
     return corr_list
 end
+
+correlation_length()

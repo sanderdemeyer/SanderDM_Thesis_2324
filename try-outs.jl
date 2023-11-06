@@ -10,9 +10,77 @@ using JLD2
 using MPSKitModels, TensorKit, MPSKit
 using Statistics
 
+
+mass = 0
+delta = 5
+
+println("mass = $mass, g = $delta")
+
+@save "Testttt_m_" * "$mass" * "_delta_" * "$delta" mass
+
+break
+
 include("get_groundstate_energy.jl")
+include("get_groundstate_energy_dynamic.jl")
 include("get_thirring_hamiltonian.jl")
 include("get_thirring_hamiltonian_symmetric.jl")
+
+
+v = 10^6
+
+gs_energy = get_groundstate_energy_dynamic(0.0, 0.0, v, 3.0, 6.0)
+println(gs_energy)
+
+break
+
+D = 30
+(gs_energy, magn) = get_groundstate_energy(0, 0, v, D, false)
+
+println(gs_energy)
+println(magn)
+
+break
+
+
+
+D_start = 2
+spin = 1//2
+pspace = U1Space(i => 1 for i in (-spin):spin)
+vspace_L = U1Space(1//2 => D_start, -1//2 => D_start, 3//2 => D_start, -3//2 => D_start)
+vspace_R = U1Space(2 => D_start, 1 => D_start, 0 => D_start, -1 => D_start, -2 => D_start)
+mps = InfiniteMPS([pspace, pspace], [vspace_L, vspace_R])
+
+println(dims((mps.AL[1]).codom)[1] + dims((mps.AL[1]).dom)[1])
+println(dims((mps.AL[1]).codom))
+println(dims((mps.AL[1]).dom))
+
+break
+
+amount = 25
+g_range = LinRange(-1, 1, amount)
+D_bond = 50
+mass = 0
+Energies = Array{Float64, 2}(undef, 1, amount)
+
+for index = 1:amount
+    g = g_range[index]
+    println("g is $g")
+    (gs_energy, _) = get_groundstate_energy(mass, g, 0, D_bond, false)
+    println("Energy is $gs_energy")
+    Energies[index] = real(gs_energy)
+end
+
+println(Energies)
+
+@save "Check_g_term_symmetric_D_50_many_more_spaces" g_range Energies
+
+
+# (gs_energy, _) = get_groundstate_energy(0.5, 0, 1.5, 50, true)
+# println("Energy symmetric is $gs_energy")
+#(gs_energy, _) = get_groundstate_energy(0.5, 0, 0.5, 50, false)
+#println("Energy asymmetric is $gs_energy")
+
+break
 
 mass = 0
 g = -2
@@ -43,7 +111,7 @@ end
 
 println(Energies)
 
-@save "Check_mass_symmetric_D_30" mass_range Energies
+@save "Check_mass_symmetric_D_50_more_spaces" mass_range Energies
 
 # Energies = Array{Float64, 2}(undef, 1, D_number)
 # Correlation_lengths = Array{Float64, 2}(undef, 1, D_number)
