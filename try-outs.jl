@@ -11,6 +11,10 @@ using MPSKitModels, TensorKit, MPSKit
 using Statistics
 
 
+delta_g_range = LinRange(-0.9, -0.1, 9)
+for j = delta_g_range
+    println(j)
+end
 mass = 0
 delta = 5
 

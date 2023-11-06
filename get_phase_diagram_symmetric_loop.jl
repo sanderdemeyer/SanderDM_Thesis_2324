@@ -23,11 +23,9 @@ delta_g_range = LinRange(-1.0, 0.0, amount_delta_g)
 
 for j = 1:amount_delta_g
     for i = 1:amount_mass
-        if !((i == 0 && j == 0) || (i == 1 && j == 1))
-            mass = mass_range[i]
-            delta_g = delta_g_range[j]
-            println("started for mass = $mass and delta_g = $delta_g")
-            phase_diagram_symmetric(mass, delta_g, v)
-        end
+        mass = mass_range[i]
+        delta_g = delta_g_range[j]
+        println("started for mass = $mass and delta_g = $delta_g")
+        phase_diagram_symmetric(mass, delta_g, v)
     end
 end
