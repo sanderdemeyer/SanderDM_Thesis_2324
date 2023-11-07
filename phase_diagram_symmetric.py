@@ -46,7 +46,7 @@ for (i,mass) in enumerate(masses):
 c = ['red' if e < 0.05 else 'blue' for e in inverse_xi]
 
 plt.scatter(delta_gs_plot, masses_plot, c = c)
-plt.xlabel('delta_g')
+plt.xlabel(r"$\Delta(g)$")
 plt.ylabel('mass')
 plt.show()
 
