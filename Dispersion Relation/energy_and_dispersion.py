@@ -28,7 +28,7 @@ plt.legend()
 plt.show()
 """
 file = "testjeee"
-file = "2023_10_24_dispersion_relation_small_k_values"
+file = "Dispersion Relation/2023_10_24_dispersion_relation_small_k_values"
 f = h5py.File(file, "r")
 energies = f["energies"][:]
 

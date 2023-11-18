@@ -6,19 +6,21 @@ import scipy.optimize
 from sklearn.metrics import r2_score
 import csv
 
+# Bekomen met foute Hamiltoniaan
+
 masses = [0, 0.241, 0.405, 0.5]
 gs = np.linspace(-1.5, 1.5, 13)
 delta_gs = np.cos((np.pi-gs)/2)
 
 
-f = h5py.File("Thirring_E_gs_v_0_D_25", "r")
+f = h5py.File("Redundant Data/Thirring_E_gs_v_0_D_25", "r")
 energies_D_25 = f["energies"][:]
 (_,M,N) = np.shape(energies_D_25)
 energies_D_25 = np.array([[(energies_D_25[0,i,j][0]+energies_D_25[1,i,j][0])/2 for i in range(M)] for j in range(N)])
-f = h5py.File("Thirring_E_gs_v_0_D_35", "r")
+f = h5py.File("Redundant Data/Thirring_E_gs_v_0_D_35", "r")
 energies_D_35 = f["energies"][:]
 energies_D_35 = np.array([[(energies_D_35[0,i,j][0]+energies_D_35[1,i,j][0])/2 for i in range(M)] for j in range(N)])
-f = h5py.File("Thirring_E_gs_v_0_D_50", "r")
+f = h5py.File("Redundant Data/Thirring_E_gs_v_0_D_50", "r")
 energies_D_50 = f["energies"][:]
 energies_D_50 = np.array([[(energies_D_50[0,i,j][0]+energies_D_50[1,i,j][0])/2 for i in range(M)] for j in range(N)])
 

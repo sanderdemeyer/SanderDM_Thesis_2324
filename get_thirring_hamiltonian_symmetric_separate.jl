@@ -1,4 +1,4 @@
-function get_thirring_hamiltonian_symmetric(am_tilde_0, Delta_g, v)
+function get_thirring_hamiltonian_symmetric_separate(am_tilde_0, Delta_g, v)
     spin = 1//2
     pspace = U1Space(i => 1 for i in (-spin):spin)
 
@@ -23,13 +23,5 @@ function get_thirring_hamiltonian_symmetric(am_tilde_0, Delta_g, v)
     Interaction_term = @mpoham Delta_g * sum(Sz_plus_12{i}*Sz_plus_12{i+1} for i in vertices(InfiniteChain(2)))
     Interaction_v_term = @mpoham (im*v*0.5) * sum(operator_threesite_final{i, i + 1, i + 2} for i in vertices(InfiniteChain(2)))
 
-    return Hopping_term + Mass_term + Interaction_term + Interaction_v_term
+    return (Hopping_term + Mass_term + Interaction_term, Interaction_v_term)
 end
-
-#=
-data = Array{ComplexF64, 2}(undef, 8, 8)
-data[2,5] = 0.5 + 0.0im
-data[4,7] = -0.5 + 0.0im
-data[5,2] = -0.5 + 0.0im
-data[7,4] = 0.5 + 0.0im
-=#

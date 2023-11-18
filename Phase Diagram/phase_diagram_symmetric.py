@@ -19,7 +19,7 @@ inverse_xi = []
 
 for (i,mass) in enumerate(masses):
     for (j,delta_g) in enumerate(delta_gs):
-        file = f"Phase_diagram_correlation_lengths_m_{mass}_delta_g_{delta_g}_v_0.0"
+        file = f"Phase Diagram/Phase_diagram_correlation_lengths_m_{mass}_delta_g_{delta_g}_v_0.0"
         f = h5py.File(file, "r")
         Energies = f["Energies"][:]
         Corr_lengths = f["Corr_lengths"][:]
@@ -51,8 +51,7 @@ plt.ylabel('mass')
 plt.show()
 
 
-print(alle)
-
+"""
 file = "Phase_diagram_correlation_lengths_m_0_g_0"
 file = "Phase_diagram_correlation_lengths_m_0.075_delta_g_-0.75_v_0.0"
 f = h5py.File(file, "r")
@@ -71,3 +70,4 @@ plt.scatter(1/bond_dims, (1/Corr_lengths))
 plt.xlabel("log10(Schmidt cut)")
 plt.ylabel(r'log10(1/$\xi$)')
 plt.show()
+"""

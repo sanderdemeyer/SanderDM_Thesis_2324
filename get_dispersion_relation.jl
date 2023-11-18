@@ -13,8 +13,6 @@ Delta_g = 0.0
 v = 0.9
 D = 12
 
-#
-
 println("Really started")
 
 state = InfiniteMPS([ℂ^2, ℂ^2],[ℂ^D, ℂ^D])

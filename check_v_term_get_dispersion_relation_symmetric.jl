@@ -4,13 +4,12 @@ using JLD2
 using MPSKitModels, TensorKit, MPSKit
 using Statistics
 
-include("get_groundstate_energy.jl")
 include("get_thirring_hamiltonian_symmetric.jl")
 include("get_thirring_hamiltonian.jl")
 
 am_tilde_0 = 0.5
 Delta_g = 0.0
-v = 0.0
+v = 0.9
 D = 20
 
 #
@@ -42,7 +41,6 @@ mps = InfiniteMPS([pspace, pspace], [vspace_L, vspace_R])
 
 hamiltonian = get_thirring_hamiltonian_symmetric(am_tilde_0, Delta_g, v)
 
-
 for i in 1:number_of_loops 
     global mps
     (mps,envs,_) = find_groundstate(mps,hamiltonian,VUMPS(maxiter = 10, tol_galerkin = 10^(-tolerance)))
@@ -60,10 +58,10 @@ gs_energy = expectation_value(groundstate, hamiltonian);
 
 k_values = LinRange(-pi/2,pi/2,17)
 
-
-
-(energies,Bs) = excitations(hamiltonian,QuasiparticleAnsatz(), k_values,groundstate,envs);
+k_values = LinRange(-pi/2,pi/2,17)
+(energies,Bs) = excitations(hamiltonian,QuasiparticleAnsatz(), k_values,mps,envs, sector = Irrep[U₁](1));
 
 print("Done with excitations")
 
-@save "2023_10_24_dispersion_relation_small_k_values_m_0_v_0p5_symmetric_better" gs_energy k_values energies Bs
+@save "2023_10_24_dispersion_relation_small_k_values_m_0p5_v_0p9_symmetric_sector_1" gs_energy k_values energies Bs
+

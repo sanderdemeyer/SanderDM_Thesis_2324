@@ -7,7 +7,7 @@ import csv
 
 delta_g = 0.0
 mass = 0.5
-v = 0.0
+v = 0.9
 
 file = "testjeee"
 file = "2023_10_24_dispersion_relation_small_k_values"
@@ -21,6 +21,10 @@ file = "asymmetric_2023_10_24_dispersion_relation_small_k_values_m_0p5_v_0p9"
 file = "2023_10_24_dispersion_relation_small_k_values_m_0p5_v_0_symmetric_better"
 #file = "2023_10_24_dispersion_relation_small_k_values_m_0_v_0p5_symmetric_better"
 file = "2023_11_05_dispersion_relation_large_k_values_m_0p5_v_0_dynamic"
+file = "2023_10_24_dispersion_relation_small_k_values_m_0p5_v_0_symmetric_sector_1o2"
+file = "2023_10_24_dispersion_relation_small_k_values_m_0p5_v_0_symmetric_sector_1"
+file = "2023_10_24_dispersion_relation_small_k_values_m_0p5_v_0p1_symmetric_sector_1"
+file = "Dispersion Relation/2023_10_24_dispersion_relation_small_k_values_m_0p5_v_0p9_symmetric_sector_1"
 
 f = h5py.File(file, "r")
 energies = f["energies"][:]
@@ -44,5 +48,5 @@ plt.plot(-k_refined, exp, label = 'analytical')
 plt.xlabel('k')
 plt.ylabel('energy')
 plt.legend()
-plt.title(r"Dispersion relation for $m = 0.5$ and $v = 0.9$")
+plt.title(r"Dispersion relation for $m = 0.5$ and $v = 0.9$, sector $U1(1)$")
 plt.show()
