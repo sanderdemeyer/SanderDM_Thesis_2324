@@ -7,7 +7,7 @@ from sklearn.metrics import r2_score
 import csv
 
 # f = h5py.File("SanderDM_Thesis_2324/Thirring_groundstate_energy_g_0_v_0", "r")
-f = h5py.File("Thirring_groundstate_energy_g_0_v_0", "r")
+#f = h5py.File("Thirring_groundstate_energy_g_0_v_0", "r")
 f30 = h5py.File("Checks on Hamiltonian/Checks on mass term/Check_mass_symmetric_D_30", "r")
 f50 = h5py.File("Checks on Hamiltonian/Checks on mass term/Check_mass_symmetric_D_50", "r")
 f50_more = h5py.File("Checks on Hamiltonian/Checks on mass term/Check_mass_symmetric_D_50_more_spaces", "r")
@@ -15,8 +15,8 @@ f_dynamic_2 = h5py.File("Checks on Hamiltonian/Checks on mass term/Check_mass_te
 f_dynamic_4 = h5py.File("Checks on Hamiltonian/Checks on mass term/Check_mass_term_symmetric_trunc_4", "r")
 m_range = 20
 masses = np.linspace(0,1,m_range)
-energies = f["energies"][:]
-energies_nonsym = [(energies[0,i][0]+energies[1,i][0])/2 for i in range(m_range)]
+#energies = f["energies"][:]
+#energies_nonsym = [(energies[0,i][0]+energies[1,i][0])/2 for i in range(m_range)]
 
 energies30 = f30["Energies"][:]
 energies50 = f50["Energies"][:]
@@ -55,7 +55,7 @@ plt.scatter(masses, energies30, label = 'VUMPS, D = 30')
 plt.scatter(masses, energies50, label = 'VUMPS, D = 50')
 plt.scatter(masses, energies50, label = 'VUMPS, D = 50')
 plt.scatter(masses, energies50_more, label = 'VUMPS, D = 50, more spaces')
-plt.scatter(masses, energies_nonsym, label = 'VUMPS, not symmetric')
+#plt.scatter(masses, energies_nonsym, label = 'VUMPS, not symmetric')
 plt.scatter(masses, energies_dynamic_2, label = 'VUMPS, dynamic trunc 2')
 plt.scatter(masses, energies_dynamic_4, label = 'VUMPS, dynamic trunc 4')
 plt.plot(m_values, E_gs_values, label = 'analytical expression')
@@ -69,13 +69,13 @@ plt.show()
 print(np.shape(energies30))
 print(np.shape(energies50))
 print(np.shape(energies50_more))
-print(np.shape(energies_nonsym))
+#print(np.shape(energies_nonsym))
 print(np.shape(E_gs_values))
 
 #plt.scatter(masses, [abs(energies30[i] - e)/e for (i,e) in enumerate(E_gs_values)], label = 'VUMPS, D = 30')
 #plt.scatter(masses, [abs(energies50[i] - e)/e for (i,e) in enumerate(E_gs_values)], label = 'VUMPS, D = 50')
 plt.scatter(masses, [abs(energies50_more[i] - e)/e for (i,e) in enumerate(E_gs_values)], label = 'VUMPS, D = 50, more spaces')
-plt.scatter(masses, [abs(energies_nonsym[i] - e)/e for (i,e) in enumerate(E_gs_values)], label = 'VUMPS, not symmetric')
+#plt.scatter(masses, [abs(energies_nonsym[i] - e)/e for (i,e) in enumerate(E_gs_values)], label = 'VUMPS, not symmetric')
 plt.xlabel('mass', fontsize = 15)
 plt.ylabel(r'error on $E_{gs}$', fontsize = 15)
 plt.title(r"Ground state energy density for $ g = 0 $, $ v = 0 $")

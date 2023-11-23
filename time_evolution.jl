@@ -31,13 +31,13 @@ end
 
 
 am_tilde_0 = 0.3
-Delta_g = -0.2
+Delta_g = 0.0
 (H_base, H_v) = get_thirring_hamiltonian_symmetric_separate(am_tilde_0, Delta_g, 1.0)
 
 dt = 0.01
 max_time_steps = 10
 window_size = 7
-
+w
 window_state = FiniteMPS([mps.AC[0], mps.AR[1], mps.AR[0], mps.AR[1]])
 window_state = FiniteMPS([mps.AC[1], mps.AR[0], mps.AR[1]])
 window_state = FiniteMPS([i == 0 ? mps.AC[0] : mps.AR[i%2] for i = 1:window_size])
