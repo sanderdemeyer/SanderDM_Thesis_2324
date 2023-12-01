@@ -13,8 +13,8 @@ RAMPING_TIME = 100
 SIZE = 20
 
 function f(t)
-    return min(0.4, 0.2+t/10) # Fast
-    #return min(0.4, 0.2+t/25) # Slow
+    #return min(0.4, 0.2+t/10) # Fast
+    return min(0.4, 0.2+t/25) # Slow
 end
 
 # lineaire functie is wss beter.
@@ -22,10 +22,10 @@ end
 # analytische tijdsevolutie? tot op Orde dt^2 juist
 
 dt = 0.001
-max_time_steps = 40000 #3000 #7000
+max_time_steps = 10000 #3000 #7000
 
 am_tilde_0 = f(0) # best gewoon wat groter.
-Delta_g = 0.0 # voor kleinere g, betere fit op dispertierelatie. Op kleinere regio fitten. Probeer voor delta_g = 0 te kijken of ik exact v of -v kan fitten in de dispertierelatie
+Delta_g = -0.3 # voor kleinere g, betere fit op dispertierelatie. Op kleinere regio fitten. Probeer voor delta_g = 0 te kijken of ik exact v of -v kan fitten in de dispertierelatie
 v = 0.0
 
 # g-->0: continuumlimiet, exact.
@@ -60,6 +60,8 @@ for j = 1:max_time_steps
     #(mps, envs) = timestep(mps, H_base + H_v*f(j), dt, TDVP())
     #(mps, envs) = timestep(mps, H_base + H_v*f(j), dt, TDVP(), envs)
     (mps, envs) = timestep(mps, H_without_mass + Mass_term*f(t), dt, TDVP()) #geen envs meegeven
+    norm_mps = norm(mps);
+    println("norm is $norm_mps");
     #gs_energy = expectation_value(mps, H_base + H_v*f(j))
     gs_energy = expectation_value(mps, H_without_mass + Mass_term*f(t))
     println("Timestep j = $j has energy $(real(gs_energy[1]+gs_energy[2])/2)")
@@ -90,7 +92,7 @@ println("Done with timesteps")
 # H, basic time-independent Window Hamiltoniaan
 
 
-@save "Thirring_time-evolution_uniform_adiabatic_m_0.3_delta_g_0.0_new_mass_sweep_fast_long_40000_higher_fidelity" energies entropies fidelities
+@save "Thirring_time-evolution_uniform_adiabatic_m_0.3_delta_g_-0.3_new_mass_sweep_slow_10000_higher_fidelity" energies entropies fidelities
 
 
 #=
