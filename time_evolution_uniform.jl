@@ -13,7 +13,8 @@ RAMPING_TIME = 100
 SIZE = 20
 
 function f(t)
-    return min(0.4, 0.2+t/20)
+    return min(0.4, 0.2+t/10) # Fast
+    #return min(0.4, 0.2+t/25) # Slow
 end
 
 # lineaire functie is wss beter.
@@ -21,11 +22,11 @@ end
 # analytische tijdsevolutie? tot op Orde dt^2 juist
 
 dt = 0.001
-max_time_steps = 6000
+max_time_steps = 40000 #3000 #7000
 
 am_tilde_0 = f(0) # best gewoon wat groter.
 Delta_g = 0.0 # voor kleinere g, betere fit op dispertierelatie. Op kleinere regio fitten. Probeer voor delta_g = 0 te kijken of ik exact v of -v kan fitten in de dispertierelatie
-v = 0
+v = 0.0
 
 # g-->0: continuumlimiet, exact.
 # zou kunnen dat v gehernomaliseerd wordt, dus v > 1 kan grondtoestand vinden maar v < veff
@@ -38,13 +39,20 @@ H_without_mass = Hopping_term + Interaction_term + Interaction_v_term
 H_base = Hopping_term + Mass_term + Interaction_term
 H_v = Interaction_v_term
 
-(mps, envs) = get_groundstate(am_tilde_0, Delta_g, v, [20 50], 3.0, 8.0)
+(mps, envs) = get_groundstate(am_tilde_0, Delta_g, v, [20 50], 5.0, 8.0)
 
+tot_bonddim = dims((mps.AL[1]).codom)[1] + dims((mps.AL[1]).dom)[1]
+println("Tot bonddim is $tot_bonddim")
+
+fidelity = @tensor mps.AC[1][1 2; 3] * conj(mps.AC[1][1 2; 3])
+println(fidelity)
 println("Started with timesteps")
 
 
 energies = zeros(ComplexF64, max_time_steps)
 entropies = zeros(ComplexF64, max_time_steps)
+fidelities = zeros(ComplexF64, 401) #71
+
 for j = 1:max_time_steps
     t = j*dt
     global mps
@@ -62,6 +70,13 @@ for j = 1:max_time_steps
         entropy = entropy -spectrum[index]*log(2, spectrum[index])
     end
     entropies[j] = entropy
+
+    if j % 100 == 0
+        #(groundstate_mps, groundstate_envs) = get_groundstate(f(t), Delta_g, v, [20 50], 3.0, 8.0, D_start = 0, mps_start = mps)
+        (groundstate_mps, groundstate_envs) = find_groundstate(mps,H_without_mass + Mass_term*f(t),VUMPS(maxiter = 50, tol_galerkin = 1e-12))
+        fidelity = @tensor groundstate_mps.AC[1][1 2; 3] * conj(mps.AC[1][1 2; 3])
+        fidelities[div(j,100)] = fidelity
+    end
     #timestep(Windowmps, window_operator, dt, TDVP(), envs) #leftevolve = True, rightevolve = False
 end
 
@@ -75,7 +90,7 @@ println("Done with timesteps")
 # H, basic time-independent Window Hamiltoniaan
 
 
-@save "Thirring_time-evolution_uniform_adiabatic_m_0.3_delta_g_0.0_new_mass_sweep_slow" energies entropies
+@save "Thirring_time-evolution_uniform_adiabatic_m_0.3_delta_g_0.0_new_mass_sweep_fast_long_40000_higher_fidelity" energies entropies fidelities
 
 
 #=

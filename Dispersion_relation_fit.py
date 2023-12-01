@@ -6,7 +6,7 @@ from sklearn.metrics import r2_score
 import csv
 from scipy.optimize import curve_fit
 
-closer = 13
+closer = 11
 rounding = 3
 
 def fit_linear(x, a, b):
@@ -22,10 +22,11 @@ def function_sqrt(x, m_fit, v_fit, c_fit):
     return v_fit*x + np.sqrt((m_fit*c_fit**2)**2 + (x*c_fit)**2)
 
 def function(x, m_fit, v_fit, c_fit):
-    return v_fit*x + m_fit*c_fit**2 + x**2/(m_fit*c_fit)/2 - x**4/(8*(m_fit*c_fit)**3)
+    return v_fit*x + m_fit*c_fit**2 + x**2/(m_fit*c_fit)/2 - x**4/(8*(m_fit*c_fit)**3) # BEST
     return v_fit*x + m_fit*c_fit**2*(1 + (x/mc)**2/2 - (x/mc)**4/8)#sqrt(1 + (x/(m*c))**2)
     return v_fit*x + m_fit*c_fit**2*sqrt(1 + (x/(m*c))**2)
     return v_fit*x + np.sqrt((m_fit*c_fit**2)**2 + (x*c_fit)**2)
+    return abs(v_fit*x) + m_fit + c_fit*x**3 # For mass = 0?
 
 
 def fit_function(delta_g, v, mass, plot = False):
@@ -66,7 +67,7 @@ def fit_function(delta_g, v, mass, plot = False):
         plt.show()
         string = fr'Fit_m = {mass}_v = {v}_\Delta(g) = {delta_g}.png'
         print(string)
-        plt.savefig(fr'Fit_m = {mass}_v = {v}_Delta(g) = {delta_g}.png')
+        #plt.savefig(fr'Fit_m = {mass}_v = {v}_Delta(g) = {delta_g}.png')
 
     return (m_fit, v_fit, c_fit)
 
@@ -77,9 +78,9 @@ for delta_g in [-0.15*i for i in range(1, 5)]:
     local_mass_renorm = []
     local_v_renorm = []
     local_c_renorm = []
-    for mass in [0.1*i for i in range(7)]:
+    for mass in [0.0]: #[0.1*i for i in range(7)]:
         for v in [0.15]:
-            (m_fit, v_fit, c_fit) = fit_function(delta_g, v, mass, plot = False)
+            (m_fit, v_fit, c_fit) = fit_function(delta_g, v, mass, plot = True)
             local_mass_renorm.append(m_fit)
             local_v_renorm.append(v_fit)
             local_c_renorm.append(c_fit)
@@ -94,7 +95,7 @@ c_renorm = np.array(c_renorm)
 print(mass_renorm)
 print(v_renorm)
 
-for m_index in range(1, 7):
+for m_index in [0]: #range(1, 7):
     plt.scatter([-0.15*i for i in range(1, 5)], v_renorm[:,m_index]/(-0.15), label = f'mass = {round(m_index*0.1,2)}')
 plt.xlabel(r'$\Delta (g)$', fontsize = 15)
 plt.ylabel(r'$v_{eff}$', fontsize = 15)

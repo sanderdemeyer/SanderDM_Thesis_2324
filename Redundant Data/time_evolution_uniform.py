@@ -8,11 +8,25 @@ import csv
 Z_over_a = 1
 v = 0.0
 
+#file = "Thirring_time-evolution_uniform_adiabatic_m_0.3_delta_g_0.0_new_mass_sweep_slow_fidelity"
+#file = "Thirring_time-evolution_uniform_adiabatic_m_0.3_delta_g_0.0_new_mass_sweep_fast_fidelity"
+file = "Thirring_time-evolution_uniform_adiabatic_m_0.3_delta_g_0.0_new_mass_sweep_fast_long_higher_fidelity"
+file = "Thirring_time-evolution_uniform_adiabatic_m_0.3_delta_g_0.0_new_mass_sweep_fast_long_40000_higher_fidelity"
+
 f = h5py.File("Thirring_time-evolution_uniform_adiabatic_m_0.3_delta_g_0.0_mass_sweep_faster", "r")
 f = h5py.File("Thirring_time-evolution_uniform_adiabatic_m_0.3_delta_g_0.0_new_mass_sweep", "r")
 f = h5py.File("Thirring_time-evolution_uniform_adiabatic_m_0.3_delta_g_0.0_new_mass_sweep_slow", "r")
+
+f = h5py.File(file)
+
 energies = f["energies"][:]
 energies = [e[0] for e in energies]
+
+entropies = f["entropies"][:]
+entropies = [e[0] for e in entropies]
+
+fidelities = f["fidelities"][:]
+fidelities = [e[0] for e in fidelities]
 
 length = len(energies)
 
@@ -22,12 +36,15 @@ def energy_analytical(k, m_0):
 RAMPING_TIME = 100
 SIZE = 20
 
+#LINEAR_SLOPE = 25
+LINEAR_SLOPE = 10
+
 #def f(j):
 #    return (0.9*np.tanh((j-3*RAMPING_TIME)/RAMPING_TIME) + 1.0)/10 + 0.2
 
 def f(j):
     t = j*0.001
-    return min(0.4, 0.2+t/20)
+    return min(0.4, 0.2+t/LINEAR_SLOPE)
 
 instantaneous_E_gs = np.zeros(length)
 for j in range(length):
@@ -43,14 +60,24 @@ plt.ylabel("Energy")
 plt.show()
 
 
-print((energies))
-print((instantaneous_E_gs))
-plt.plot(range(length), energies, label = r'$<E_{gs}>$')
-#plt.plot(range(length), instantaneous_E_gs, label = r"Instantaneous ground state energy of $H(t)$")
+plt.plot(np.array(range(length))*0.001, entropies)
 plt.legend()
+plt.xlabel("Time")
+plt.ylabel(r"Entropy $S$")
 plt.show()
 
-print(energies[0])
-print(instantaneous_E_gs[0])
-print(energies[-1])
-print(instantaneous_E_gs[-1])
+
+plt.scatter(np.array(range(length//100))*0.001, [abs(e) for e in fidelities[:-1]])
+plt.legend()
+plt.xlabel("Time")
+plt.ylabel(r"Fidelity $\left<\psi|\psi_{gs}\right>$")
+plt.show()
+
+
+plt.scatter(np.array(range(length//100))*0.001, [np.log10(1-abs(e)) for e in fidelities[:-1]])
+plt.legend()
+plt.xlabel("Time")
+plt.ylabel(r"$\log_{10}{(1-\text{Fidelity})}$")
+plt.show()
+
+
