@@ -14,6 +14,11 @@ SIZE = 20
 
 function f(t)
     #return min(0.4, 0.2+t/10) # Fast
+    return min(1.1, t/15)
+end
+
+function f_mass(t)
+    #return min(0.4, 0.2+t/10) # Fast
     return min(0.4, 0.2+t/25) # Slow
 end
 
@@ -22,7 +27,7 @@ end
 # analytische tijdsevolutie? tot op Orde dt^2 juist
 
 dt = 0.001
-max_time_steps = 10000 #3000 #7000
+max_time_steps = 16500 #3000 #7000
 
 am_tilde_0 = f(0) # best gewoon wat groter.
 Delta_g = -0.3 # voor kleinere g, betere fit op dispertierelatie. Op kleinere regio fitten. Probeer voor delta_g = 0 te kijken of ik exact v of -v kan fitten in de dispertierelatie
@@ -33,13 +38,16 @@ v = 0.0
 #TDVP vs 
 #bond dimensie best dynamisch laten groeien. Later altijd grotere D nodig
 
-(Hopping_term, Mass_term, Interaction_term, Interaction_v_term) = get_thirring_hamiltonian_symmetric_separate(1, Delta_g, v)
+mass_v_sweep = 0.6
+# (Hopping_term, Mass_term, Interaction_term, Interaction_v_term) = get_thirring_hamiltonian_symmetric_separate(1, Delta_g, v) # For mass sweep
+(Hopping_term, Mass_term, Interaction_term, Interaction_v_term) = get_thirring_hamiltonian_symmetric_separate(mass_v_sweep, Delta_g, 1) # For v sweep
 H_without_mass = Hopping_term + Interaction_term + Interaction_v_term
+H_without_v = Hopping_term + Mass_term + Interaction_term
 
 H_base = Hopping_term + Mass_term + Interaction_term
 H_v = Interaction_v_term
 
-(mps, envs) = get_groundstate(am_tilde_0, Delta_g, v, [20 50], 5.0, 8.0)
+(mps, envs) = get_groundstate(am_tilde_0, Delta_g, v, [20 50], 3.5, 8.0)
 
 tot_bonddim = dims((mps.AL[1]).codom)[1] + dims((mps.AL[1]).dom)[1]
 println("Tot bonddim is $tot_bonddim")
@@ -51,19 +59,19 @@ println("Started with timesteps")
 
 energies = zeros(ComplexF64, max_time_steps)
 entropies = zeros(ComplexF64, max_time_steps)
-fidelities = zeros(ComplexF64, 401) #71
+fidelities = zeros(ComplexF64, 166) #71
 
 for j = 1:max_time_steps
     t = j*dt
     global mps
     global envs
-    #(mps, envs) = timestep(mps, H_base + H_v*f(j), dt, TDVP())
-    #(mps, envs) = timestep(mps, H_base + H_v*f(j), dt, TDVP(), envs)
-    (mps, envs) = timestep(mps, H_without_mass + Mass_term*f(t), dt, TDVP()) #geen envs meegeven
-    norm_mps = norm(mps);
-    println("norm is $norm_mps");
+    #(mps, envs) = timestep(mps, H_base + H_v*f(j), dt, TDVP()) OLD
+    #(mps, envs) = timestep(mps, H_base + H_v*f(j), dt, TDVP(), envs) OLD
+    #(mps, envs) = timestep(mps, H_without_mass + Mass_term*f(t), dt, TDVP()) #geen envs meegeven MASS SWEEP
+    (mps, envs) = timestep(mps, H_without_v + Interaction_v_term*f(t), dt, TDVP()) #geen envs meegeven V SWEEP
     #gs_energy = expectation_value(mps, H_base + H_v*f(j))
-    gs_energy = expectation_value(mps, H_without_mass + Mass_term*f(t))
+    #gs_energy = expectation_value(mps, H_without_mass + Mass_term*f(t))
+    gs_energy = expectation_value(mps, H_without_v + Interaction_v_term*f(t))
     println("Timestep j = $j has energy $(real(gs_energy[1]+gs_energy[2])/2)")
     energies[j] = real(gs_energy[1]+gs_energy[2])/2
     spectrum = entanglement_spectrum(mps)
@@ -75,7 +83,8 @@ for j = 1:max_time_steps
 
     if j % 100 == 0
         #(groundstate_mps, groundstate_envs) = get_groundstate(f(t), Delta_g, v, [20 50], 3.0, 8.0, D_start = 0, mps_start = mps)
-        (groundstate_mps, groundstate_envs) = find_groundstate(mps,H_without_mass + Mass_term*f(t),VUMPS(maxiter = 50, tol_galerkin = 1e-12))
+        #(groundstate_mps, groundstate_envs) = find_groundstate(mps,H_without_mass + Mass_term*f(t),VUMPS(maxiter = 50, tol_galerkin = 1e-12)) # For mass sweep
+        (groundstate_mps, groundstate_envs) = find_groundstate(mps,H_without_v + Interaction_v_term*f(t),VUMPS(maxiter = 50, tol_galerkin = 1e-12)) # For v sweep
         fidelity = @tensor groundstate_mps.AC[1][1 2; 3] * conj(mps.AC[1][1 2; 3])
         fidelities[div(j,100)] = fidelity
     end
@@ -92,7 +101,7 @@ println("Done with timesteps")
 # H, basic time-independent Window Hamiltoniaan
 
 
-@save "Thirring_time-evolution_uniform_adiabatic_m_0.3_delta_g_-0.3_new_mass_sweep_slow_10000_higher_fidelity" energies entropies fidelities
+@save "Thirring_time-evolution_uniform_adiabatic_m_0.6_delta_g_-0.3_trunc_4.5_new_v_sweep_slow_10000_higher_fidelity" energies entropies fidelities
 
 
 #=

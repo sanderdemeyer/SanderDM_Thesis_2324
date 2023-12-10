@@ -13,6 +13,7 @@ v = 0.0
 file = "Thirring_time-evolution_uniform_adiabatic_m_0.3_delta_g_0.0_new_mass_sweep_fast_long_higher_fidelity"
 file = "Thirring_time-evolution_uniform_adiabatic_m_0.3_delta_g_0.0_new_mass_sweep_fast_long_40000_higher_fidelity"
 file = "Thirring_time-evolution_uniform_adiabatic_m_0.3_delta_g_-0.3_new_mass_sweep_slow_10000_higher_fidelity"
+file = "Thirring_time-evolution_uniform_adiabatic_m_0.6_delta_g_-0.3_trunc_4.5_new_v_sweep_slow_10000_higher_fidelity"
 
 #f = h5py.File("Thirring_time-evolution_uniform_adiabatic_m_0.3_delta_g_0.0_mass_sweep_faster", "r")
 #f = h5py.File("Thirring_time-evolution_uniform_adiabatic_m_0.3_delta_g_0.0_new_mass_sweep", "r")
@@ -44,6 +45,10 @@ LINEAR_SLOPE = 10
 #    return (0.9*np.tanh((j-3*RAMPING_TIME)/RAMPING_TIME) + 1.0)/10 + 0.2
 
 def f(j):
+    t = j*0.001
+    return min(0.4, 0.2+t/LINEAR_SLOPE)
+
+def f_mass(j):
     t = j*0.001
     return min(0.4, 0.2+t/LINEAR_SLOPE)
 

@@ -6,13 +6,6 @@ from sklearn.metrics import r2_score
 import csv
 from scipy.optimize import curve_fit
 
-closer = 1
-rounding = 3
-schmidt_cut = 3.5
-data_folder = f"Data_cut_{schmidt_cut}"
-
-excluded_0 = 1
-
 
 def fit_linear(x, a, b):
     return a*x+b
@@ -46,8 +39,8 @@ def function_mass_0(x, v, c):
 
 def fit_function(delta_g, v, mass, plot = False):
 
-    #file = "Dispersion_Delta_m_0.5_delta_g_-0.3_v_0.5"
     file = f"Dispersion_Data/{data_folder}/Dispersion_m_{mass} _delta_g_{delta_g} _v_{v}"
+    #file = f"Dispersion_Data/{data_folder}/Dispersion_closer_m_{mass} _delta_g_{delta_g} _v_{v}"
 
     f = h5py.File(file, "r")
     energies = f["energies"][:]
@@ -55,6 +48,7 @@ def fit_function(delta_g, v, mass, plot = False):
     amount_data = np.shape(energies)[1]
 
     bounds = np.pi/12
+    bounds = np.pi/36
 
     energies = [np.real(e[0]) for e in energies[0,:]]
 
@@ -77,6 +71,8 @@ def fit_function(delta_g, v, mass, plot = False):
     print(f'c gets regularized from {1} to {c_fit}')
     """
 
+    check1 = (-3*a3)/(2*a1)
+    check2 = -(a2*(2*a0+3*a2))/(6*a0*a4)
     print(f'for this value, the checks that should be 1 are {(-3*a3)/(2*a1)} and {-(a2*(2*a0+3*a2))/(6*a0*a4)}.')
 
     if plot:
@@ -93,39 +89,109 @@ def fit_function(delta_g, v, mass, plot = False):
         print(string)
         plt.savefig(fr'Fit_m = {mass}_v = {v}_Delta(g) = {delta_g}.png')
 
-    return (m_fit, v_fit, c_fit)
-
-mass_renorm = []
-v_renorm = []
-c_renorm = []
-for delta_g in [-0.15*i for i in range(1, 5)]:
-    local_mass_renorm = []
-    local_v_renorm = []
-    local_c_renorm = []
-    for mass in [0.1*i for i in range(1, 7)]:
-        for v in [0.15]:
-            (m_fit, v_fit, c_fit) = fit_function(delta_g, v, mass, plot = False)
-            print(mass)
-            local_mass_renorm.append(m_fit)
-            local_v_renorm.append(v_fit)
-            local_c_renorm.append(c_fit)
-    mass_renorm.append(local_mass_renorm)
-    v_renorm.append(local_v_renorm)
-    c_renorm.append(local_c_renorm)
+    return (m_fit, v_fit, c_fit, check1, check2)
 
 
+closer = 1
+rounding = 3
+schmidt_cut = 3.5
+excluded_0 = 1 # do you want to ignore m = 0.0?
+
+mass_renorm = [[], [], []]
+v_renorm = [[], [], []]
+c_renorm = [[], [], []]
+checks1 = [[], [], []]
+checks2 = [[], [], []]
+
+for (schmidt_number, schmidt_cut) in enumerate([3.5, 4.0, 4.5]):
+    data_folder = f"Data_cut_{schmidt_cut}"
+    #data_folder = "Data closer"
+    for delta_g in [-0.15*i for i in range(1, 5)]:
+        local_mass_renorm = []
+        local_v_renorm = []
+        local_c_renorm = []
+        local_checks1 = []
+        local_checks2 = []
+        for mass in [0.1*i for i in range(1, 7)]:
+            for v in [0.15]:
+                (m_fit, v_fit, c_fit, check1, check2) = fit_function(delta_g, v, mass, plot = False)
+                local_mass_renorm.append(m_fit)
+                local_v_renorm.append(v_fit)
+                local_c_renorm.append(c_fit)
+                local_checks1.append(check1)
+                local_checks2.append(check2)
+        mass_renorm[schmidt_number].append(local_mass_renorm)
+        v_renorm[schmidt_number].append(local_v_renorm)
+        c_renorm[schmidt_number].append(local_c_renorm)
+        checks1[schmidt_number].append(local_checks1)
+        checks2[schmidt_number].append(local_checks2)
+
+"""
+mass_renorm = np.array(mass_renorm[0])
+v_renorm = np.array(v_renorm[0])
+c_renorm = np.array(c_renorm[0])
+checks1 = np.array(checks1[0])
+checks2 = np.array(checks2[0])
+"""
 mass_renorm = np.array(mass_renorm)
 v_renorm = np.array(v_renorm)
 c_renorm = np.array(c_renorm)
-print(mass_renorm)
-print(v_renorm)
+checks1 = np.array(checks1)
+checks2 = np.array(checks2)
+print(np.shape(mass_renorm))
+print(np.shape(v_renorm))
+print(np.shape(checks1))
+print(np.shape(checks2))
 
-for m_index in range(1, 7):
-    plt.scatter([-0.15*i for i in range(1, 5)], v_renorm[:,m_index-excluded_0]/(-0.15), label = f'mass = {round(m_index*0.1,2)}')
-plt.xlabel(r'$\Delta (g)$', fontsize = 15)
-plt.ylabel(r'$v_{eff}$', fontsize = 15)
-plt.title(fr'Relative renormalization from $v = 0.15$ for schmidt-cut = {schmidt_cut}', fontsize = 15)
-plt.legend()
+for (schmidt_number, schmidt_cut) in enumerate([3.5, 4.0, 4.5]):
+    for m_index in range(1, 7):
+        plt.scatter([-0.15*i for i in range(1, 5)], v_renorm[schmidt_number,:,m_index-excluded_0]/(-0.15), label = f'mass = {round(m_index*0.1,2)}. schmidt = {schmidt_cut}')
+        #plt.scatter([-0.15*i for i in range(1, 5)], v_renorm[:,m_index-excluded_0]/(-0.15), label = f'mass = {round(m_index*0.1,2)}. schmidt = {schmidt_cut}')
+    plt.xlabel(r'$\Delta (g)$', fontsize = 15)
+    plt.ylabel(r'$v_{eff}$', fontsize = 15)
+    plt.title(fr'Relative renormalization from $v = 0.15$ for schmidt-cut = {schmidt_cut}', fontsize = 15)
+    plt.legend()
+plt.show()
+
+for (schmidt_number, schmidt_cut) in enumerate([3.5, 4.0, 4.5]):
+    for m_index in range(1, 7):
+        plt.scatter([-0.15*i for i in range(1, 5)], mass_renorm[schmidt_number,:,m_index-excluded_0]/(-0.15), label = f'mass = {round(m_index*0.1,2)}. schmidt = {schmidt_cut}')
+        #plt.scatter([-0.15*i for i in range(1, 5)], v_renorm[:,m_index-excluded_0]/(-0.15), label = f'mass = {round(m_index*0.1,2)}. schmidt = {schmidt_cut}')
+    plt.xlabel(r'$\Delta (g)$', fontsize = 15)
+    plt.ylabel(r'$mass_{eff}$', fontsize = 15)
+    plt.title(fr'Relative renormalization the mass for schmidt-cut = {schmidt_cut}', fontsize = 15)
+    plt.legend()
+plt.show()
+
+for (schmidt_number, schmidt_cut) in enumerate([3.5, 4.0, 4.5]):
+    for m_index in range(1, 7):
+        plt.scatter([-0.15*i for i in range(1, 5)], c_renorm[schmidt_number,:,m_index-excluded_0]/(-0.15), label = f'mass = {round(m_index*0.1,2)}. schmidt = {schmidt_cut}')
+        #plt.scatter([-0.15*i for i in range(1, 5)], v_renorm[:,m_index-excluded_0]/(-0.15), label = f'mass = {round(m_index*0.1,2)}. schmidt = {schmidt_cut}')
+    plt.xlabel(r'$\Delta (g)$', fontsize = 15)
+    plt.ylabel(r'$c_{eff}$', fontsize = 15)
+    plt.title(fr'Relative renormalization of c for schmidt-cut = {schmidt_cut}', fontsize = 15)
+    plt.legend()
+plt.show()
+
+
+for (schmidt_number, schmidt_cut) in enumerate([3.5, 4.0, 4.5]):
+    for m_index in range(1, 7):
+        plt.scatter([-0.15*i for i in range(1, 5)], checks1[schmidt_number,:,m_index-excluded_0], label = f'mass = {round(m_index*0.1,2)}. schmidt = {schmidt_cut}')
+        #plt.scatter([-0.15*i for i in range(1, 5)], checks1[:,m_index-excluded_0], label = f'mass = {round(m_index*0.1,2)}. schmidt = {schmidt_cut}')
+    plt.xlabel(r'$\Delta (g)$', fontsize = 15)
+    plt.ylabel(r'$check1$', fontsize = 15)
+    plt.title(fr'check1 for schmidt-cut = {schmidt_cut}', fontsize = 15)
+    plt.legend()
+plt.show()
+
+for (schmidt_number, schmidt_cut) in enumerate([3.5, 4.0, 4.5]):
+    for m_index in range(1, 7):
+        plt.scatter([-0.15*i for i in range(1, 5)], checks2[schmidt_number,:,m_index-excluded_0], label = f'mass = {round(m_index*0.1,2)}. schmidt = {schmidt_cut}')
+        #plt.scatter([-0.15*i for i in range(1, 5)], checks2[:,m_index-excluded_0], label = f'mass = {round(m_index*0.1,2)}. schmidt = {schmidt_cut}')
+    plt.xlabel(r'$\Delta (g)$', fontsize = 15)
+    plt.ylabel(r'$check2$', fontsize = 15)
+    plt.title(fr'check2 for schmidt-cut = {schmidt_cut}', fontsize = 15)
+    plt.legend()
 plt.show()
 
 for m_index in range(3, 7):
