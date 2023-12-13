@@ -9,12 +9,14 @@ include("get_groundstate.jl")
 
 
 MAX_V_VALUE = 2.0
-RAMPING_TIME = 100
+RAMPING_TIME = 15
 SIZE = 20
+
+v_max = 1.1
 
 function f(t)
     #return min(0.4, 0.2+t/10) # Fast
-    return min(1.1, t/15)
+    return min(v_max, t/RAMPING_TIME)
 end
 
 function f_mass(t)
@@ -27,10 +29,10 @@ end
 # analytische tijdsevolutie? tot op Orde dt^2 juist
 
 dt = 0.001
-max_time_steps = 16500 #3000 #7000
+max_time_steps = 18000 #3000 #7000
 
-am_tilde_0 = f(0) # best gewoon wat groter.
-Delta_g = -0.3 # voor kleinere g, betere fit op dispertierelatie. Op kleinere regio fitten. Probeer voor delta_g = 0 te kijken of ik exact v of -v kan fitten in de dispertierelatie
+# am_tilde_0 = f(0) # best gewoon wat groter.
+Delta_g = -0.1 # voor kleinere g, betere fit op dispertierelatie. Op kleinere regio fitten. Probeer voor delta_g = 0 te kijken of ik exact v of -v kan fitten in de dispertierelatie
 v = 0.0
 
 # g-->0: continuumlimiet, exact.
@@ -47,7 +49,9 @@ H_without_v = Hopping_term + Mass_term + Interaction_term
 H_base = Hopping_term + Mass_term + Interaction_term
 H_v = Interaction_v_term
 
-(mps, envs) = get_groundstate(am_tilde_0, Delta_g, v, [20 50], 3.5, 8.0)
+truncation = 3.0
+
+(mps, envs) = get_groundstate(mass_v_sweep, Delta_g, v, [20 50], truncation, 8.0)
 
 tot_bonddim = dims((mps.AL[1]).codom)[1] + dims((mps.AL[1]).dom)[1]
 println("Tot bonddim is $tot_bonddim")
@@ -59,7 +63,10 @@ println("Started with timesteps")
 
 energies = zeros(ComplexF64, max_time_steps)
 entropies = zeros(ComplexF64, max_time_steps)
-fidelities = zeros(ComplexF64, 166) #71
+fidelities = zeros(ComplexF64, div(max_time_steps,100)+1) #71
+true_energies = zeros(ComplexF64, div(max_time_steps,100)+1) #71
+true_energies_global = zeros(ComplexF64, div(max_time_steps,100)+1) #71
+
 
 for j = 1:max_time_steps
     t = j*dt
@@ -84,9 +91,15 @@ for j = 1:max_time_steps
     if j % 100 == 0
         #(groundstate_mps, groundstate_envs) = get_groundstate(f(t), Delta_g, v, [20 50], 3.0, 8.0, D_start = 0, mps_start = mps)
         #(groundstate_mps, groundstate_envs) = find_groundstate(mps,H_without_mass + Mass_term*f(t),VUMPS(maxiter = 50, tol_galerkin = 1e-12)) # For mass sweep
-        (groundstate_mps, groundstate_envs) = find_groundstate(mps,H_without_v + Interaction_v_term*f(t),VUMPS(maxiter = 50, tol_galerkin = 1e-12)) # For v sweep
-        fidelity = @tensor groundstate_mps.AC[1][1 2; 3] * conj(mps.AC[1][1 2; 3])
+        (groundstate_mps_local, groundstate_envs_local) = find_groundstate(mps,H_without_v + Interaction_v_term*f(t),VUMPS(maxiter = 50, tol_galerkin = 1e-12)) # For v sweep
+        true_gs_energy = expectation_value(groundstate_mps_local, H_without_v + Interaction_v_term*f(t))
+        (groundstate_mps, envs) = get_groundstate(mass_v_sweep, Delta_g, f(t), [20 50], truncation, 8.0)
+        true_gs_energy_global = expectation_value(groundstate_mps, H_without_v + Interaction_v_term*f(t))
+
+        fidelity = @tensor groundstate_mps_local.AC[1][1 2; 3] * conj(mps.AC[1][1 2; 3])
         fidelities[div(j,100)] = fidelity
+        true_energies[div(j,100)] = (true_gs_energy[1] + true_gs_energy[2])/2
+        true_energies_global[div(j,100)] = (true_gs_energy_global[1] + true_gs_energy_global[2])/2
     end
     #timestep(Windowmps, window_operator, dt, TDVP(), envs) #leftevolve = True, rightevolve = False
 end
@@ -101,9 +114,12 @@ println("Done with timesteps")
 # H, basic time-independent Window Hamiltoniaan
 
 
-@save "Thirring_time-evolution_uniform_adiabatic_m_0.6_delta_g_-0.3_trunc_4.5_new_v_sweep_slow_10000_higher_fidelity" energies entropies fidelities
+# @save "Thirring_time-evolution_uniform_adiabatic_m_0.6_delta_g_-0.3_trunc_4.5_new_v_sweep_slower_10000_higher_fidelity" energies entropies fidelities
+@save "v_sweep_m_$(mass_v_sweep)_delta_g_$(Delta_g)_ramping_$(RAMPING_TIME)_max_$(v_max)_trunc_$(truncation)" energies entropies fidelities true_energies true_energies_global
 
-
+println("Tot bonddim is $tot_bonddim")
+print("first energy is ")
+println(energies[1])
 #=
 function timestep!(
     Ψ::WindowMPS,
