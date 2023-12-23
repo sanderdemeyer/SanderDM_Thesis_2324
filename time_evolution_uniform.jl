@@ -9,7 +9,7 @@ include("get_groundstate.jl")
 
 
 MAX_V_VALUE = 2.0
-RAMPING_TIME = 15
+RAMPING_TIME = 5
 SIZE = 20
 
 v_max = 1.1
@@ -29,27 +29,27 @@ end
 # analytische tijdsevolutie? tot op Orde dt^2 juist
 
 dt = 0.001
-max_time_steps = 18000 #3000 #7000
+max_time_steps = 6000 #3000 #7000
 
 # am_tilde_0 = f(0) # best gewoon wat groter.
-Delta_g = -0.1 # voor kleinere g, betere fit op dispertierelatie. Op kleinere regio fitten. Probeer voor delta_g = 0 te kijken of ik exact v of -v kan fitten in de dispertierelatie
+Delta_g = 0.0 # voor kleinere g, betere fit op dispertierelatie. Op kleinere regio fitten. Probeer voor delta_g = 0 te kijken of ik exact v of -v kan fitten in de dispertierelatie
 v = 0.0
+mass_v_sweep = 0.0
 
 # g-->0: continuumlimiet, exact.
 # zou kunnen dat v gehernomaliseerd wordt, dus v > 1 kan grondtoestand vinden maar v < veff
 #TDVP vs 
 #bond dimensie best dynamisch laten groeien. Later altijd grotere D nodig
 
-mass_v_sweep = 0.6
 # (Hopping_term, Mass_term, Interaction_term, Interaction_v_term) = get_thirring_hamiltonian_symmetric_separate(1, Delta_g, v) # For mass sweep
-(Hopping_term, Mass_term, Interaction_term, Interaction_v_term) = get_thirring_hamiltonian_symmetric_separate(mass_v_sweep, Delta_g, 1) # For v sweep
+(Hopping_term, Mass_term, Interaction_term, Interaction_v_term) = get_thirring_hamiltonian_symmetric_separate(mass_v_sweep, Delta_g, 1.0) # For v sweep
 H_without_mass = Hopping_term + Interaction_term + Interaction_v_term
 H_without_v = Hopping_term + Mass_term + Interaction_term
 
 H_base = Hopping_term + Mass_term + Interaction_term
 H_v = Interaction_v_term
 
-truncation = 3.0
+truncation = 3.5
 
 (mps, envs) = get_groundstate(mass_v_sweep, Delta_g, v, [20 50], truncation, 8.0)
 
@@ -115,7 +115,7 @@ println("Done with timesteps")
 
 
 # @save "Thirring_time-evolution_uniform_adiabatic_m_0.6_delta_g_-0.3_trunc_4.5_new_v_sweep_slower_10000_higher_fidelity" energies entropies fidelities
-@save "v_sweep_m_$(mass_v_sweep)_delta_g_$(Delta_g)_ramping_$(RAMPING_TIME)_max_$(v_max)_trunc_$(truncation)" energies entropies fidelities true_energies true_energies_global
+@save "v_sweep_m_$(mass_v_sweep)_delta_g_$(Delta_g)_ramping_$(RAMPING_TIME)_dt_$(dt)_max_$(v_max)_trunc_$(truncation)" energies entropies fidelities true_energies true_energies_global
 
 println("Tot bonddim is $tot_bonddim")
 print("first energy is ")

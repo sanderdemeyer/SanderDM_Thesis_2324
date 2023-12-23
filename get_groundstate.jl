@@ -1,5 +1,6 @@
 include("get_thirring_hamiltonian_symmetric.jl")
 include("get_initial_mps.jl")
+
 function get_groundstate(am_tilde_0, Delta_g, v, iterations, trunc, tolerance; number_of_loops = 4, D_start = 3, mps_start = 0)
     if D_start == 0
         mps = mps_start

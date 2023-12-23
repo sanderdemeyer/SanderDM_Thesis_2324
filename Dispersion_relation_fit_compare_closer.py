@@ -75,7 +75,7 @@ if "v" in show:
                 plt.errorbar([1 + i for i in range(max_index)], v_renorms[:,0,i,m_index-excluded_0], v_sigma_renorms[:,0,i,m_index-excluded_0], label = fr'mass = {round(m_index*0.1,2)}, $\Delta(g)$ = {delta_g}', fmt="o")
             else:
                 plt.scatter([1 + i for i in range(max_index)], v_renorms[:,0,i,m_index-excluded_0], label = fr'mass = {round(m_index*0.1,2)}, $\Delta(g)$ = {delta_g}')
-            plt.xlabel(r'number of data points', fontsize = 15)
+            plt.xlabel(r'Scaling factor', fontsize = 15)
             plt.ylabel(r'$v_{eff}$', fontsize = 15)
             plt.title(fr'Relative renormalization from $v = 0.15$ for schmidt-cut = {schmidt_cut}', fontsize = 15)
             plt.legend()
@@ -88,7 +88,7 @@ if "mass" in show:
                 plt.errorbar([1 + i for i in range(max_index)], mass_renorms[:,0,i,m_index-excluded_0], mass_sigma_renorms[:,0,i,m_index-excluded_0], label = fr'mass = {round(m_index*0.1,2)}, $\Delta(g)$ = {delta_g}', fmt="o")
             else:
                 plt.scatter([1 + i for i in range(max_index)], mass_renorms[:,0,i,m_index-excluded_0], label = fr'mass = {round(m_index*0.1,2)}, $\Delta(g)$ = {delta_g}')
-            plt.xlabel(r'number of data points', fontsize = 15)
+            plt.xlabel(r'Scaling factor', fontsize = 15)
             plt.ylabel(r'$mass_{eff}$', fontsize = 15)
             plt.title(fr'Relative renormalization of the mass for schmidt-cut = {schmidt_cut}', fontsize = 15)
             plt.legend()
@@ -98,10 +98,10 @@ if "c" in show:
     for m_index in range(1,7):
         for (i,delta_g) in enumerate([-0.15*i for i in range(1, delta_g_range)]):
             if error_bars:
-                plt.errorbar([1 + i for i in range(max_index)], c_renorms[:,0,i,m_index-excluded_0], c_sigma_renorms[:,0,i,m_index-excluded_0], label = fr'mass = {round(m_index*0.1,2)}, $\Delta(g)$ = {delta_g}', fmt="o")
+                plt.errorbar([(1 + i) for i in range(max_index)], c_renorms[:,0,i,m_index-excluded_0], c_sigma_renorms[:,0,i,m_index-excluded_0], label = fr'mass = {round(m_index*0.1,2)}, $\Delta(g)$ = {delta_g}', fmt="o")
             else:
-                plt.scatter([1 + i for i in range(max_index)], c_renorms[:,0,i,m_index-excluded_0], label = fr'mass = {round(m_index*0.1,2)}, $\Delta(g)$ = {delta_g}')
-            plt.xlabel(r'number of data points', fontsize = 15)
+                plt.scatter([(1 + i) for i in range(max_index)], c_renorms[:,0,i,m_index-excluded_0], label = fr'mass = {round(m_index*0.1,2)}, $\Delta(g)$ = {delta_g}')
+            plt.xlabel(r'Scaling factor', fontsize = 15)
             plt.ylabel(r'$c_{eff}$', fontsize = 15)
             plt.title(fr'Relative renormalization of c for schmidt-cut = {schmidt_cut}', fontsize = 15)
             plt.legend()

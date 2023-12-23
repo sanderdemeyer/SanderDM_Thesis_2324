@@ -8,15 +8,27 @@ import csv
 Z_over_a = 1
 v = 0.0
 
+mass = 0.0
+delta_g = 0.0
+trunc = 3.5
+ramping = 5
+dt = 0.001
+
 #file = "Thirring_time-evolution_uniform_adiabatic_m_0.3_delta_g_0.0_new_mass_sweep_slow_fidelity"
 #file = "Thirring_time-evolution_uniform_adiabatic_m_0.3_delta_g_0.0_new_mass_sweep_fast_fidelity"
 #file = "Thirring_time-evolution_uniform_adiabatic_m_0.3_delta_g_0.0_new_mass_sweep_fast_long_higher_fidelity"
 #file = "Thirring_time-evolution_uniform_adiabatic_m_0.3_delta_g_0.0_new_mass_sweep_fast_long_40000_higher_fidelity"
 #file = "Thirring_time-evolution_uniform_adiabatic_m_0.3_delta_g_-0.3_new_mass_sweep_slow_10000_higher_fidelity"
-file = "v_sweep_m_0.6_delta_g_-0.1_ramping_15_max_1.1_trunc_3.0"
+
 #f = h5py.File("Thirring_time-evolution_uniform_adiabatic_m_0.3_delta_g_0.0_mass_sweep_faster", "r")
 #f = h5py.File("Thirring_time-evolution_uniform_adiabatic_m_0.3_delta_g_0.0_new_mass_sweep", "r")
 #f = h5py.File("Thirring_time-evolution_uniform_adiabatic_m_0.3_delta_g_0.0_new_mass_sweep_slow", "r")
+
+
+#file = "v_sweep_m_0.6_delta_g_-0.3_ramping_10_dt_0.005_max_1.1_trunc_2.5"
+#file = "v_sweep_m_0.2_delta_g_-0.3_ramping_10_dt_0.005_max_1.1_trunc_2.5"
+
+file = f"v_sweep_m_{mass}_delta_g_{delta_g}_ramping_{ramping}_dt_{dt}_max_1.1_trunc_{trunc}"
 
 f = h5py.File(file)
 
@@ -84,6 +96,7 @@ plt.plot(np.array(range(len(true_energies)))*0.1, true_energies_global, label = 
 plt.legend()
 plt.xlabel("Time")
 plt.ylabel("Energy")
+plt.title(fr"m = {mass}, $\Delta(g)$ = {delta_g}, trunc = {trunc}")
 plt.show()
 
 
@@ -91,20 +104,23 @@ plt.plot(np.array(range(length))*0.001, entropies)
 plt.legend()
 plt.xlabel("Time")
 plt.ylabel(r"Entropy $S$")
+plt.title(fr"m = {mass}, $\Delta(g)$ = {delta_g}, trunc = {trunc}")
 plt.show()
 
 
-plt.scatter(np.array(range(length//100))*0.001, [abs(e) for e in fidelities[:-1]])
+plt.scatter(np.array(range(length//100))*0.1, [abs(e) for e in fidelities[:-1]])
 plt.legend()
 plt.xlabel("Time")
 plt.ylabel(r"Fidelity $\left<\psi|\psi_{gs}\right>$")
+plt.title(fr"m = {mass}, $\Delta(g)$ = {delta_g}, trunc = {trunc}")
 plt.show()
 
 
-plt.scatter(np.array(range(length//100))*0.001, [np.log10(1-abs(e)) for e in fidelities[:-1]])
+plt.scatter(np.array(range(length//100))*0.1, [np.log10(1-abs(e)) for e in fidelities[:-1]])
 plt.legend()
 plt.xlabel("Time")
 plt.ylabel(r"$\log_{10}{(1-\text{Fidelity})}$")
+plt.title(fr"m = {mass}, $\Delta(g)$ = {delta_g}, trunc = {trunc}")
 plt.show()
 
 
