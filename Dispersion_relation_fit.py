@@ -1,3 +1,8 @@
+"""
+Part of legacy, it would be better to use the file Disperion_relation_fit_function.py
+"""
+
+
 import h5py
 import numpy as np
 import matplotlib.pyplot as plt
@@ -5,7 +10,7 @@ import scipy.optimize as opt
 from sklearn.metrics import r2_score
 import csv
 from scipy.optimize import curve_fit
-
+ 
 
 def fit_linear(x, a, b):
     return a*x+b

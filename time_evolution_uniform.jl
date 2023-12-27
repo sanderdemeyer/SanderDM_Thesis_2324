@@ -1,7 +1,9 @@
 using LinearAlgebra
 using Base
 using JLD2
-using MPSKitModels, TensorKit, MPSKit
+using MPSKit
+using MPSKitModels
+using TensorKit
 using Statistics
 
 include("get_thirring_hamiltonian_symmetric_separate.jl")
@@ -34,7 +36,7 @@ max_time_steps = 6000 #3000 #7000
 # am_tilde_0 = f(0) # best gewoon wat groter.
 Delta_g = 0.0 # voor kleinere g, betere fit op dispertierelatie. Op kleinere regio fitten. Probeer voor delta_g = 0 te kijken of ik exact v of -v kan fitten in de dispertierelatie
 v = 0.0
-mass_v_sweep = 0.0
+mass_v_sweep = 0.6
 
 # g-->0: continuumlimiet, exact.
 # zou kunnen dat v gehernomaliseerd wordt, dus v > 1 kan grondtoestand vinden maar v < veff
@@ -49,9 +51,11 @@ H_without_v = Hopping_term + Mass_term + Interaction_term
 H_base = Hopping_term + Mass_term + Interaction_term
 H_v = Interaction_v_term
 
-truncation = 3.5
+truncation = 2.5
 
-(mps, envs) = get_groundstate(mass_v_sweep, Delta_g, v, [20 50], truncation, 8.0)
+println("started")
+(mps, envs) = get_groundstate(mass_v_sweep, Delta_g, v, [5 10], truncation, 8.0)
+#(mps, envs) = get_groundstate(mass_v_sweep, Delta_g, v, [20 50], truncation, 8.0)
 
 tot_bonddim = dims((mps.AL[1]).codom)[1] + dims((mps.AL[1]).dom)[1]
 println("Tot bonddim is $tot_bonddim")
@@ -83,10 +87,12 @@ for j = 1:max_time_steps
     energies[j] = real(gs_energy[1]+gs_energy[2])/2
     spectrum = entanglement_spectrum(mps)
     entropy = 0
-    for index = 1:length(spectrum)
-        entropy = entropy -spectrum[index]*log(2, spectrum[index])
-    end
-    entropies[j] = entropy
+    # for index = 1:length(spectrum)
+    #     println(spectrum)
+    #     println(spectrum[index])
+    #     entropy = entropy -spectrum[index]*log(2, spectrum[index])
+    # end
+    # entropies[j] = entropy
 
     if j % 100 == 0
         #(groundstate_mps, groundstate_envs) = get_groundstate(f(t), Delta_g, v, [20 50], 3.0, 8.0, D_start = 0, mps_start = mps)

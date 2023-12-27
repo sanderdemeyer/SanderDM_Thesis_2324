@@ -1,9 +1,7 @@
-push!(LOAD_PATH, raw"C:\Users\Sande\Documents\School\0600 - tweesis\Code\MPSKit_Daan.jl")
-using MPSKit
 using LinearAlgebra
 using Base
 using JLD2
-using MPSKitModels, TensorKit
+using MPSKitModels, TensorKit, MPSKit
 using Statistics
 
 include("get_thirring_hamiltonian_symmetric_separate.jl")
@@ -22,8 +20,9 @@ N = 50 # Number of sites
 i_start = 10
 i_end = 40
 
-dt = 0.001
-max_time_steps = 6000 #3000 #7000
+dt = 0.01
+max_time_steps = 600 #3000 #7000
+t_end = 10
 
 am_tilde_0 = 0.6
 Delta_g = 0.0 # voor kleinere g, betere fit op dispertierelatie. Op kleinere regio fitten. Probeer voor delta_g = 0 te kijken of ik exact v of -v kan fitten in de dispertierelatie
@@ -54,4 +53,9 @@ WindowH = Window(Ht_left,Ht_mid,Ht_right);
 WindowE = environments(Ψ,WindowH);
 
 
-println("done")
+tobesaved = []
+t_span    = 0:dt:t_end
+alg       = TDVP(finalize=(t,Ψ,H,E)->myfinalize(t,Ψ,H,E,tobesaved,xWindow,g,gs,0.0))
+Ψt = copy(Ψ)
+
+window_dt,WindowE = time_evolve!(Ψt,WindowH,t_span,alg,WindowE;verbose=true,rightevolve=true)

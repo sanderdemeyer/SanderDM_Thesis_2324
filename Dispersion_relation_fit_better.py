@@ -15,7 +15,6 @@ def function_4th_order_base(k0, x, a1, a2, a3, a4):
     return k0 + a1*x + a2*x**2 + a3*x**3 + a4*x**4
 
 
-
 def fit_function(delta_g, v, mass, plot = False):
 
     #file = f"Dispersion_Data/{data_folder}/Dispersion_m_{mass} _delta_g_{delta_g} _v_{v}"

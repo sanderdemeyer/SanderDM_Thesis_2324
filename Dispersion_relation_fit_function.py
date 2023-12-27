@@ -1,3 +1,19 @@
+"""
+Defines the functions for the fits on the dispertion data.
+the dispertion data for k = 0, namely mc^2, is set as a fixed parameter and not a parameter that needs to be fitted
+
+function_fit_base is the fit function based on the taylor series of the exactly known free dispertion relation vk + sqrt((mc^2)^2 + (pc)^2)
+function_4th_order_base is a general 4th order fit function
+
+fit_function performs the fit based on function_fit_base
+fit_function_factor does the same as the above function, but with a 'factor' denoting how much the data was 'zoomed in'
+fit_function_factor_efficient does the same as the above, but more efficiently, which has an influence on the indexing.
+
+Dispersion_relation_fit performs the fitting and iterates over all values of m,v, and delta(g).
+
+"""
+
+
 import h5py
 import numpy as np
 import matplotlib.pyplot as plt
@@ -195,7 +211,8 @@ def fit_function_factor_efficient(delta_g, v, mass, data_folder, factor, plot = 
     energies = f["energies"][:]
     bounds = f["bounds"]
     amount_data = np.shape(energies)[1]
-    index_k_0 = (amount_data-1)//2
+    index_k_0 = 0 #(amount_data-1)//2
+
 
     #bounds = np.pi/12
     bounds = np.pi/72
@@ -214,7 +231,6 @@ def fit_function_factor_efficient(delta_g, v, mass, data_folder, factor, plot = 
     energy_points = [energies[indices_to_index[j*factor]] for j in range(-ndp, ndp+1)]
 
     popt, pcov = curve_fit(function_fit, k_points, energy_points, (mass, v))
-
 
     (m_fit, v_fit) = popt
     c_fit = np.sqrt(energies[index_k_0]/m_fit)
@@ -242,7 +258,8 @@ def fit_function_factor_efficient(delta_g, v, mass, data_folder, factor, plot = 
 
     if plot:
         plt.figure()
-        plt.scatter(k, np.array(energies), label = 'quasiparticle')
+        plt.scatter(k_points, energy_points, label = 'quasiparticle')
+        # plt.scatter(k, np.array(energies), label = 'quasiparticle')
         plt.plot(k_refined, exp, 'b-', label = '4th order taylor fit')
         plt.plot(k_refined, exp_plus_sigma, 'b--', label = '4th order taylor fit')
         plt.plot(k_refined, exp_minus_sigma, 'b--', label = '4th order taylor fit')
@@ -261,7 +278,7 @@ def fit_function_factor_efficient(delta_g, v, mass, data_folder, factor, plot = 
     return (m_fit, v_fit, c_fit, m_fit_sigma, v_fit_sigma, c_fit_sigma)
 
 
-def Dispersion_relation_fit(closer, way_of_fitting = "factor"):
+def Dispersion_relation_fit(closer, way_of_fitting = "factor", plot = False):
     data_folder = "Data closer"
     data_folder = "Data pi_over_72"
 
@@ -275,44 +292,67 @@ def Dispersion_relation_fit(closer, way_of_fitting = "factor"):
         print("Insert valid way_of_fitting")
         assert 0 == 1
 
-    mass_renorm = [[], [], []]
-    v_renorm = [[], [], []]
-    c_renorm = [[], [], []]
-    mass_sigma_renorm = [[], [], []]
-    v_sigma_renorm = [[], [], []]
-    c_sigma_renorm = [[], [], []]
+    # mass_renorm = [[], [], []]
+    # v_renorm = [[], [], []]
+    # c_renorm = [[], [], []]
+    # mass_sigma_renorm = [[], [], []]
+    # v_sigma_renorm = [[], [], []]
+    # c_sigma_renorm = [[], [], []]
+
+    delta_g_number = 4
+    mass_number = 7
+    v_number = 1
+    schmidt_cut_number = 3
+    mass_renorm = np.zeros((schmidt_cut_number, delta_g_number, mass_number))
+    v_renorm = np.zeros((schmidt_cut_number, delta_g_number, mass_number))
+    c_renorm = np.zeros((schmidt_cut_number, delta_g_number, mass_number))
+    mass_sigma_renorm = np.zeros((schmidt_cut_number, delta_g_number, mass_number))
+    v_sigma_renorm = np.zeros((schmidt_cut_number, delta_g_number, mass_number))
+    c_sigma_renorm = np.zeros((schmidt_cut_number, delta_g_number, mass_number))
 
     for (schmidt_number, schmidt_cut) in enumerate([3.5, 4.0, 4.5]):
         #data_folder = f"Data_cut_{schmidt_cut}"
-        for delta_g in [-0.15*i for i in range(1, 4)]: # 4 should be 5 sometimes
-            local_mass_renorm = []
-            local_v_renorm = []
-            local_c_renorm = []
-            local_mass_sigma_renorm = []
-            local_v_sigma_renorm = []
-            local_c_sigma_renorm = []
-            for mass in [0.1*i for i in range(1, 7)]:
-                for v in [0.15]:
-                    (m_fit, v_fit, c_fit, m_fit_sigma, v_fit_sigma, c_fit_sigma) = function_to_fit(delta_g, v, mass, data_folder, closer, plot = False)
-                    local_mass_renorm.append(m_fit)
-                    local_v_renorm.append(v_fit)
-                    local_c_renorm.append(c_fit)
-                    local_mass_sigma_renorm.append(m_fit_sigma)
-                    local_v_sigma_renorm.append(v_fit_sigma)
-                    local_c_sigma_renorm.append(c_fit_sigma)
-            mass_renorm[schmidt_number].append(local_mass_renorm)
-            v_renorm[schmidt_number].append(local_v_renorm)
-            c_renorm[schmidt_number].append(local_c_renorm)
-            mass_sigma_renorm[schmidt_number].append(local_mass_sigma_renorm)
-            v_sigma_renorm[schmidt_number].append(local_v_sigma_renorm)
-            c_sigma_renorm[schmidt_number].append(local_c_sigma_renorm)
+        for (delta_g_index,delta_g) in enumerate([-0.15*i for i in range(1, delta_g_number)]): # 4 should be 5 sometimes
+            for (mass_index,mass) in enumerate([0.1*i for i in range(1, mass_number)]):
+                v = 0.15
+                (m_fit, v_fit, c_fit, m_fit_sigma, v_fit_sigma, c_fit_sigma) = function_to_fit(delta_g, v, mass, data_folder, closer, plot = plot)
+                mass_renorm[schmidt_number,delta_g_index,mass_index] = m_fit
+                v_renorm[schmidt_number,delta_g_index,mass_index] = v_fit
+                c_renorm[schmidt_number,delta_g_index,mass_index] = c_fit
+                mass_sigma_renorm[schmidt_number,delta_g_index,mass_index] = m_fit_sigma
+                v_sigma_renorm[schmidt_number,delta_g_index,mass_index] = v_fit_sigma
+                c_sigma_renorm[schmidt_number,delta_g_index,mass_index] = c_fit_sigma
 
+    # for (schmidt_number, schmidt_cut) in enumerate([3.5, 4.0, 4.5]):
+    #     #data_folder = f"Data_cut_{schmidt_cut}"
+    #     for delta_g in [-0.15*i for i in range(1, delta_g_number)]: # 4 should be 5 sometimes
+    #         local_mass_renorm = []
+    #         local_v_renorm = []
+    #         local_c_renorm = []
+    #         local_mass_sigma_renorm = []
+    #         local_v_sigma_renorm = []
+    #         local_c_sigma_renorm = []
+    #         for mass in [0.1*i for i in range(1, mass_number)]:
+    #             for v in [0.15]:
+    #                 (m_fit, v_fit, c_fit, m_fit_sigma, v_fit_sigma, c_fit_sigma) = function_to_fit(delta_g, v, mass, data_folder, closer, plot = False)
+    #                 local_mass_renorm.append(m_fit)
+    #                 local_v_renorm.append(v_fit)
+    #                 local_c_renorm.append(c_fit)
+    #                 local_mass_sigma_renorm.append(m_fit_sigma)
+    #                 local_v_sigma_renorm.append(v_fit_sigma)
+    #                 local_c_sigma_renorm.append(c_fit_sigma)
+    #         mass_renorm[schmidt_number].append(local_mass_renorm)
+    #         v_renorm[schmidt_number].append(local_v_renorm)
+    #         c_renorm[schmidt_number].append(local_c_renorm)
+    #         mass_sigma_renorm[schmidt_number].append(local_mass_sigma_renorm)
+    #         v_sigma_renorm[schmidt_number].append(local_v_sigma_renorm)
+    #         c_sigma_renorm[schmidt_number].append(local_c_sigma_renorm)
 
-    mass_renorm = np.array(mass_renorm)
-    v_renorm = np.array(v_renorm)
-    c_renorm = np.array(c_renorm)
-    mass_sigma_renorm = np.array(mass_sigma_renorm)
-    v_sigma_renorm = np.array(v_sigma_renorm)
-    c_sigma_renorm = np.array(c_sigma_renorm)
+    # mass_renorm = np.array(mass_renorm)
+    # v_renorm = np.array(v_renorm)
+    # c_renorm = np.array(c_renorm)
+    # mass_sigma_renorm = np.array(mass_sigma_renorm)
+    # v_sigma_renorm = np.array(v_sigma_renorm)
+    # c_sigma_renorm = np.array(c_sigma_renorm)
 
     return (mass_renorm, v_renorm, c_renorm, mass_sigma_renorm, v_sigma_renorm, c_sigma_renorm)

@@ -1,12 +1,82 @@
-using Pkg
-Pkg.activate("TimeDepend")
-using MPSKit,MPSKitModels,TensorKit
+#Pkg.activate("Project_Thesis_2324.toml")
+#Pkg.instantiate()
+
+#push!(LOAD_PATH, "./MPSKit.jl/src")
+
+# dir = "C:\\Users\\Sande\\Documents\\School\\0600 - tweesis\\Code\\SanderDM_Thesis_2324\\MPSKit.jl"
+# include.(filter(contains(r".jl$"), readdir(dir; join=true)))
+
+#push!(LOAD_PATH, raw"C:\Users\Sande\Documents\School\0600 - tweesis\Code\MPSKit.jl")
+
+#include("files_from_MPSKit_Daan/multipliedoperator.jl") #src/operators
+#include("files_from_MPSKit_Daan/sumofoperators.jl") #src/operators
+
+# import MPSKit
+# using MPSKit
+
+#include("MPSKit.jl")
+using MPSKit
+using MPSKitModels
+#include("c:\\Users\\Sande\\Documents\\School\\0600 - tweesis\\Code\\MPSKit.jl\\src\\MPSKit.jl")
+using TensorKit
+#using MPSKitModels
+using KrylovKit
+using Glob
+import Main
+using Main
+
+dir = "c:\\Users\\Sande\\Documents\\School\\0600 - tweesis\\Code\\MPSKit.jl\\src"
+
+# include("includes.jl")
+
+#include.(filter(contains(r".jl$"), readdir(dir; join=true)))
+# foreach(include, glob("*.jl", "c:\\Users\\Sande\\Documents\\School\\0600 - tweesis\\Code\\MPSKit.jl\\src\\utility"))
+# foreach(include, glob("*.jl", "c:\\Users\\Sande\\Documents\\School\\0600 - tweesis\\Code\\MPSKit.jl\\src\\states"))
+# foreach(include, glob("*.jl", "c:\\Users\\Sande\\Documents\\School\\0600 - tweesis\\Code\\MPSKit.jl\\src\\operators\\densempo"))
+# foreach(include, glob("*.jl", "c:\\Users\\Sande\\Documents\\School\\0600 - tweesis\\Code\\MPSKit.jl\\src\\operators\\sparsempo"))
+# foreach(include, glob("*.jl", "c:\\Users\\Sande\\Documents\\School\\0600 - tweesis\\Code\\MPSKit.jl\\src\\operators"))
+# foreach(include, glob("*.jl", "c:\\Users\\Sande\\Documents\\School\\0600 - tweesis\\Code\\MPSKit.jl\\src\\transfermatrix"))
+# foreach(include, glob("*.jl", "c:\\Users\\Sande\\Documents\\School\\0600 - tweesis\\Code\\MPSKit.jl\\src\\environments"))
+# foreach(include, glob("*.jl", "c:\\Users\\Sande\\Documents\\School\\0600 - tweesis\\Code\\MPSKit.jl\\src\\algorithms"))
+# foreach(include, glob("*.jl", "c:\\Users\\Sande\\Documents\\School\\0600 - tweesis\\Code\\MPSKit.jl\\src\\algorithms\\groundstate"))
+# foreach(include, glob("*.jl", "c:\\Users\\Sande\\Documents\\School\\0600 - tweesis\\Code\\MPSKit.jl\\src\\algorithms\\approximate"))
+# foreach(include, glob("*.jl", "c:\\Users\\Sande\\Documents\\School\\0600 - tweesis\\Code\\MPSKit.jl\\src\\algorithms\\changebonds"))
+# foreach(include, glob("*.jl", "c:\\Users\\Sande\\Documents\\School\\0600 - tweesis\\Code\\MPSKit.jl\\src\\algorithms\\excitation"))
+# foreach(include, glob("*.jl", "c:\\Users\\Sande\\Documents\\School\\0600 - tweesis\\Code\\MPSKit.jl\\src\\algorithms\\propagator"))
+# foreach(include, glob("*.jl", "c:\\Users\\Sande\\Documents\\School\\0600 - tweesis\\Code\\MPSKit.jl\\src\\algorithms\\statmech"))
+# foreach(include, glob("*.jl", "c:\\Users\\Sande\\Documents\\School\\0600 - tweesis\\Code\\MPSKit.jl\\src\\algorithms\\timestep"))
+
+# dir = "c:\\Users\\Sande\\Documents\\School\\0600 - tweesis\\Code\\MPSKitModels.jl\\src"
+# #include.(filter(contains(r".jl$"), readdir(dir; join=true)))
+# foreach(include, glob("*.jl", "c:\\Users\\Sande\\Documents\\School\\0600 - tweesis\\Code\\MPSKitModels.jl\\src\\lattices"))
+# foreach(include, glob("*.jl", "c:\\Users\\Sande\\Documents\\School\\0600 - tweesis\\Code\\MPSKitModels.jl\\src\\models"))
+# foreach(include, glob("*.jl", "c:\\Users\\Sande\\Documents\\School\\0600 - tweesis\\Code\\MPSKitModels.jl\\src\\operators"))
+
+# include("files_from_MPSKit_Daan/multipliedoperator.jl") #src/operators
+# include("files_from_MPSKit_Daan/sumofoperators.jl") #src/operators
+# include("files_from_MPSKit_Daan/extra_environments.jl") # random stuff
+
+# include("files_from_MPSKit_Daan/defaults.jl") # random stuff
+
+# include("files_from_MPSKit_Daan/environments/abstractinfenv.jl") # random stuff
+# include("files_from_MPSKit_Daan/environments/mpohaminfenv.jl") # random stuff
+
+
+# include("environments/lazylincocache.jl")
+
+
+# FiniteMPS(rand, ComplexF64, L, ℂ^2, ℂ^10)
+
 
 function myfinalize(t,Ψ,H,env,tobesaved,O,gl,gs,gr,timefun)
 	zs = map(i->expectation_value(Ψ,O,i),0:length(Ψ)+1)
 	hs = [gl*timefun(t),(timefun(t).*gs)...,gr*timefun(t)]
 	push!(tobesaved,[t,expectation_value(Ψ,H(t),env),zs,hs])
 	return Ψ,env
+end
+
+function f_trivial(t)
+	return 1.0
 end
 
 # some variables
@@ -31,36 +101,98 @@ ground,envs,_ = find_groundstate(ground,Hgs,VUMPS(maxiter=200, tol_galerkin = 1e
 X = σˣ()
 xWindow = Window(X,X,X)
 
+TmOp = TimedOperator(Hgs, f)
+
+println(typeof(ground))
+println(typeof(repeat(ground,10)))
+println(typeof(Ψ))
+println(typeof(Window(ground,repeat(ground,10),ground)))
+println(typeof(Window(Hgs,repeat(Hgs,10),Hgs)))
+
+windowE = environments(Ψ, Window(Hgs,Hgs,Hgs))
+
+windowE = environments(Ψ, Window(Hgs,Hgs,TimedOperator(Hgs,f)))
+windowE = environments(Ψ, Window(Hgs,Hgs,SumofOperators([Hgs, Hgs])))
+WindowE = environments(Ψ, Window(Hgs,Hgs,SumofOperators([Hgs, TimedOperator(Hgs,f)]))); # werkt
+
 # left Hamiltonian # H(t) = -∑_{<i,j>} Z_i Z_j - f(t) ∑_{<i>} g * X_i
 H_left1 = transverse_field_ising(;g=0.0);
 H_left2 = @mpoham sum(i->-g*X{i},vertices(InfiniteChain(1)))
-Ht_left = H_left1 + TimedOperator(H_left2,f)
+SumOfOperators([Hgs, Hgs, Hgs])
+
+Ht_leftnew = TimedOperator(H_left2,f)
+Ht_left = SumOfOperators([H_left1, TimedOperator(H_left2,f)])
 
 # middle Hamiltonian # H(t) = -∑_{<i,j>} Z_i Z_j - f(t) ∑_{<i>} g_i * X_i
 H_mid1 = repeat(H_left1,N)
 H_mid2 = @mpoham sum(i->-gs[i]*X{i},vertices(InfiniteChain(N)));
 #Ht_mid = TimedOperator(H_mid1,f) + TimedOperator(H_mid2,g)
-Ht_mid = H_mid1 + TimedOperator(H_mid2,f);
+Ht_mid = SumOfOperators([H_mid1, TimedOperator(H_mid2,f)])
 
 #right 
 H_right1 = transverse_field_ising(;g=0.);
-H_right2 = @mpoham sum(i->-0*X{i},vertices(InfiniteChain(1)));
-H_right = H_right1 + TimedOperator(H_right2,f) ;
+H_right2 = @mpoham sum(i->-0*X{i},vertices(InfiniteChain(1)))
+Ht_right = SumOfOperators([H_right1, TimedOperator(H_right2,f)])
 #Note: despite not doing time evolution with the right infinite part,
 #      for the code to work we need Ht_right to have a similar form as the left and middle H
 
-WindowH = Window(Ht_left,Ht_mid,H_right);
-WindowE = environments(Ψ,WindowH);
+WindowH = Window(Ht_left,Ht_mid,Ht_right);
+test = SumOfOperators([Window(Hgs, Hgs, Hgs), Window(TimedOperator(Hgs),TimedOperator(Hgs),TimedOperator(Hgs))])
+WindowE = environments(WindowMPS(ground,repeat(ground,N),ground), test)
+WindowE = environments(ground,Hgs);
 
-Einit = expectation_value(Ψ,WindowH,WindowE)
-Xinit = map(i->expectation_value(window,xWindow,i),0:N+1)
+ground,envs,_ = find_groundstate(ground,Hgs,VUMPS(maxiter=200, tol_galerkin = 1e-8))
+Ψ = WindowMPS(ground,N);
+Hgs = transverse_field_ising(g=0.0);
+
+
+H_without_v = Hgs;
+Interaction_v_term = Hgs;
+Interaction_v_term_middle = Interaction_v_term;
+
+H_mid_v = @mpoham sum(f(i)*Interaction_v_term for i in vertices(InfiniteChain(N)))
+
+
+test_Wind = TimedOperator(Hgs,f)
+#test = SumOfOperators([Window(Hgs, Hgs, Hgs), Window(Hgs,Hgs,Hgs)])
+#test = SumOfOperators(Window(Hgs, Hgs, Hgs))
+#test = SumOfOperators([Window(Hgs, Hgs, Hgs)])
+test = SumOfOperators(Hgs) # werkt
+test = Window(Hgs, Hgs, Hgs) # werkt
+test = SumOfOperators(Window(Hgs,Hgs,Hgs)) # werkt niet
+test = Window(SumOfOperators(Hgs), SumOfOperators(Hgs), SumOfOperators(Hgs)) # werkt
+test = Window(SumOfOperators([Hgs,Hgs]), SumOfOperators([Hgs,Hgs]), SumOfOperators([Hgs,Hgs])) # werkt
+test = Window(SumOfOperators([Hgs,TimedOperator(Hgs,f)]), SumOfOperators([Hgs,Hgs]), SumOfOperators([Hgs,Hgs])) # werkt
+test = Window(SumOfOperators([Hgs,TimedOperator(Hgs,f)]), H_mid_v, SumOfOperators([Hgs,Hgs])) # werkt
+
+
+
+environments(Ψ,test)
+
+
+
+WindowH = SumOfOperators([Window(H_without_v,H_without_v,H_without_v), Window(0*Interaction_v_term, TimedOperator(Interaction_v_term_middle,f), TimedOperator(Interaction_v_term,f))]) 
+environments(Ψ,WindowH)
+
+WindowE = environments(Ψ,Window(Hgs,Hgs,Hgs)); # werkt
+WindowE = environments(Ψ,Window(Hgs,Hgs,TimedOperator(Hgs,f))); # werkt
+WindowE = environments(Ψ,Window(Hgs,Hgs,Hgs+Hgs)); # werkt
+WindowE = environments(Ψ, SumOfOperators([Hgs,Hgs])); # werkt
+WindowE = environments(Ψ,Window(Hgs,Hgs,SumOfOperators([Hgs,Hgs]))); # werkt niet
+WindowE = environments(Ψ,Window(Hgs,Hgs,SumOfOperators(TimedOperator(Hgs,f)))); #werkt niet
+#WindowE = environments(Ψ,WindowH);
+
+# Einit = expectation_value(Ψ,WindowH,WindowE)
+# Xinit = map(i->expectation_value(window,xWindow,i),0:N+1)
 
 tobesaved = []
 t_span    = 0:dt:t_end
-alg       = TDVP(finalize=(t,Ψ,H,E)->myfinalize(t,Ψ,H,E,tobesaved,xWindow,g,gs,0.0))
+#alg       = TDVP(finalize=(t,Ψ,H,E)->myfinalize(t,Ψ,H,E,tobesaved,xWindow,g,gs,0.0))
+alg       = TDVP()
 Ψt = copy(Ψ)
 
-window_dt,WindowE = time_evolve!(Ψt,WindowH,t_span,alg,WindowE;verbose=true,rightevolve=false)
+#window_dt,WindowE = time_evolve!(Ψt,WindowH,t_end,dt,alg;verbose=true,leftevolve,rightevolve=true)
+window_dt,WindowE = timestep!(Ψt,WindowH,t_end,dt,alg;verbose=true,leftevolve=true,rightevolve=true)
 
 
 
