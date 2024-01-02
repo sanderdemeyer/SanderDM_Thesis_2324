@@ -16,6 +16,7 @@
 
 #include("MPSKit.jl")
 using MPSKit
+# using MPSKit_Daan
 using MPSKitModels
 #include("c:\\Users\\Sande\\Documents\\School\\0600 - tweesis\\Code\\MPSKit.jl\\src\\MPSKit.jl")
 using TensorKit
@@ -68,13 +69,6 @@ dir = "c:\\Users\\Sande\\Documents\\School\\0600 - tweesis\\Code\\MPSKit.jl\\src
 # FiniteMPS(rand, ComplexF64, L, ℂ^2, ℂ^10)
 
 
-function myfinalize(t,Ψ,H,env,tobesaved,O,gl,gs,gr,timefun)
-	zs = map(i->expectation_value(Ψ,O,i),0:length(Ψ)+1)
-	hs = [gl*timefun(t),(timefun(t).*gs)...,gr*timefun(t)]
-	push!(tobesaved,[t,expectation_value(Ψ,H(t),env),zs,hs])
-	return Ψ,env
-end
-
 function f_trivial(t)
 	return 1.0
 end
@@ -111,75 +105,89 @@ println(typeof(Window(Hgs,repeat(Hgs,10),Hgs)))
 
 windowE = environments(Ψ, Window(Hgs,Hgs,Hgs))
 
-windowE = environments(Ψ, Window(Hgs,Hgs,TimedOperator(Hgs,f)))
-windowE = environments(Ψ, Window(Hgs,Hgs,SumofOperators([Hgs, Hgs])))
-WindowE = environments(Ψ, Window(Hgs,Hgs,SumofOperators([Hgs, TimedOperator(Hgs,f)]))); # werkt
+windowE = environments(Ψ, Window(Hgs,Hgs,TimedOperator(Hgs,f))) # werkt
+windowE = environments(ground, SumOfOperators([Hgs, Hgs])) # werkt
+#windowE = environments(Ψ, SumOfOperators([Window(Hgs,Hgs,Hgs), Window(Hgs,Hgs,Hgs)])) # werkt niet
+windowE = environments(Ψ, Window(SumOfOperators([Hgs, Hgs]),SumOfOperators([Hgs, Hgs]),SumOfOperators([Hgs, Hgs]))) # werkt
+windowE = environments(Ψ, Window(SumOfOperators([Hgs, TimedOperator(Hgs)]),SumOfOperators([Hgs, TimedOperator(Hgs)]),SumOfOperators([Hgs, TimedOperator(Hgs)]))) # werkt
+# WindowE = environments(Ψ, Window(Hgs,Hgs,SumOfOperators([Hgs, TimedOperator(Hgs,f)]))); # werkt niet
+# windowE = environments(Ψ, Window(Hgs,Hgs,SumOfOperators([Hgs, Hgs]))) # werkt niet
 
 # left Hamiltonian # H(t) = -∑_{<i,j>} Z_i Z_j - f(t) ∑_{<i>} g * X_i
-H_left1 = transverse_field_ising(;g=0.0);
-H_left2 = @mpoham sum(i->-g*X{i},vertices(InfiniteChain(1)))
-SumOfOperators([Hgs, Hgs, Hgs])
+# H_left1 = transverse_field_ising(;g=0.0);
+# H_left2 = @mpoham sum(i->-g*X{i},vertices(InfiniteChain(1)))
 
-Ht_leftnew = TimedOperator(H_left2,f)
-Ht_left = SumOfOperators([H_left1, TimedOperator(H_left2,f)])
+# # middle Hamiltonian # H(t) = -∑_{<i,j>} Z_i Z_j - f(t) ∑_{<i>} g_i * X_i
+# H_mid1 = repeat(H_left1,N)
+# H_mid2 = @mpoham sum(i->-gs[i]*X{i},vertices(InfiniteChain(N)));
+# #Ht_mid = TimedOperator(H_mid1,f) + TimedOperator(H_mid2,g)
+# Ht_mid = SumOfOperators([H_mid1, TimedOperator(H_mid2,f)])
 
-# middle Hamiltonian # H(t) = -∑_{<i,j>} Z_i Z_j - f(t) ∑_{<i>} g_i * X_i
-H_mid1 = repeat(H_left1,N)
-H_mid2 = @mpoham sum(i->-gs[i]*X{i},vertices(InfiniteChain(N)));
-#Ht_mid = TimedOperator(H_mid1,f) + TimedOperator(H_mid2,g)
-Ht_mid = SumOfOperators([H_mid1, TimedOperator(H_mid2,f)])
+# #right 
+# H_right1 = transverse_field_ising(;g=0.);
+# H_right2 = @mpoham sum(i->-0*X{i},vertices(InfiniteChain(1)))
+# Ht_right = SumOfOperators([H_right1, TimedOperator(H_right2,f)])
+# #Note: despite not doing time evolution with the right infinite part,
+# #      for the code to work we need Ht_right to have a similar form as the left and middle H
 
-#right 
-H_right1 = transverse_field_ising(;g=0.);
-H_right2 = @mpoham sum(i->-0*X{i},vertices(InfiniteChain(1)))
-Ht_right = SumOfOperators([H_right1, TimedOperator(H_right2,f)])
-#Note: despite not doing time evolution with the right infinite part,
-#      for the code to work we need Ht_right to have a similar form as the left and middle H
+# WindowH = Window(Ht_left,Ht_mid,Ht_right);
+# test = SumOfOperators([Window(Hgs, Hgs, Hgs), Window(TimedOperator(Hgs),TimedOperator(Hgs),TimedOperator(Hgs))])
+# WindowE = environments(WindowMPS(ground,repeat(ground,N),ground), test)
+# WindowE = environments(ground,Hgs);
+
+
+# # underlying works
+Ht_left = SumOfOperators([Hgs, Hgs])
+Ht_mid = SumOfOperators([Hgs, Hgs])
+Ht_right = SumOfOperators([Hgs, Hgs])
+
+
+# Ht_left = SumOfOperators([Hgs, 5*Hgs])
+# Ht_mid = SumOfOperators([Hgs, 3*Hgs])
+# Ht_right = SumOfOperators([Hgs, Hgs])
+
+# # underlying doesn't work
+# Ht_left = SumOfOperators([Hgs, TimedOperator(Hgs,f)])
+# Ht_mid = SumOfOperators([Hgs, TimedOperator(Hgs,f)])
+# Ht_right = SumOfOperators([Hgs, TimedOperator(Hgs,f)])
+
 
 WindowH = Window(Ht_left,Ht_mid,Ht_right);
-test = SumOfOperators([Window(Hgs, Hgs, Hgs), Window(TimedOperator(Hgs),TimedOperator(Hgs),TimedOperator(Hgs))])
-WindowE = environments(WindowMPS(ground,repeat(ground,N),ground), test)
-WindowE = environments(ground,Hgs);
+WindowE = environments(Ψ, WindowH)
 
-ground,envs,_ = find_groundstate(ground,Hgs,VUMPS(maxiter=200, tol_galerkin = 1e-8))
-Ψ = WindowMPS(ground,N);
-Hgs = transverse_field_ising(g=0.0);
+# ground,envs,_ = find_groundstate(ground,Hgs,VUMPS(maxiter=200, tol_galerkin = 1e-8))
+# Ψ = WindowMPS(ground,N);
+# Hgs = transverse_field_ising(g=0.0);
 
 
-H_without_v = Hgs;
-Interaction_v_term = Hgs;
-Interaction_v_term_middle = Interaction_v_term;
-
-H_mid_v = @mpoham sum(f(i)*Interaction_v_term for i in vertices(InfiniteChain(N)))
+# H_mid_v = @mpoham sum(f(i)*Interaction_v_term for i in vertices(InfiniteChain(N)))
 
 
-test_Wind = TimedOperator(Hgs,f)
-#test = SumOfOperators([Window(Hgs, Hgs, Hgs), Window(Hgs,Hgs,Hgs)])
-#test = SumOfOperators(Window(Hgs, Hgs, Hgs))
-#test = SumOfOperators([Window(Hgs, Hgs, Hgs)])
-test = SumOfOperators(Hgs) # werkt
-test = Window(Hgs, Hgs, Hgs) # werkt
-test = SumOfOperators(Window(Hgs,Hgs,Hgs)) # werkt niet
-test = Window(SumOfOperators(Hgs), SumOfOperators(Hgs), SumOfOperators(Hgs)) # werkt
-test = Window(SumOfOperators([Hgs,Hgs]), SumOfOperators([Hgs,Hgs]), SumOfOperators([Hgs,Hgs])) # werkt
-test = Window(SumOfOperators([Hgs,TimedOperator(Hgs,f)]), SumOfOperators([Hgs,Hgs]), SumOfOperators([Hgs,Hgs])) # werkt
-test = Window(SumOfOperators([Hgs,TimedOperator(Hgs,f)]), H_mid_v, SumOfOperators([Hgs,Hgs])) # werkt
+# test_Wind = TimedOperator(Hgs,f)
+# #test = SumOfOperators([Window(Hgs, Hgs, Hgs), Window(Hgs,Hgs,Hgs)])
+# #test = SumOfOperators(Window(Hgs, Hgs, Hgs))
+# #test = SumOfOperators([Window(Hgs, Hgs, Hgs)])
+# test = SumOfOperators(Hgs) # werkt
+# test = Window(Hgs, Hgs, Hgs) # werkt
+# test = SumOfOperators(Window(Hgs,Hgs,Hgs)) # werkt niet
+# test = Window(SumOfOperators(Hgs), SumOfOperators(Hgs), SumOfOperators(Hgs)) # werkt
+# test = Window(SumOfOperators([Hgs,Hgs]), SumOfOperators([Hgs,Hgs]), SumOfOperators([Hgs,Hgs])) # werkt
+# test = Window(SumOfOperators([Hgs,TimedOperator(Hgs,f)]), SumOfOperators([Hgs,Hgs]), SumOfOperators([Hgs,Hgs])) # werkt
+# test = Window(SumOfOperators([Hgs,TimedOperator(Hgs,f)]), H_mid_v, SumOfOperators([Hgs,Hgs])) # werkt
+
+# environments(Ψ,test)
 
 
 
-environments(Ψ,test)
+# WindowH = SumOfOperators([Window(H_without_v,H_without_v,H_without_v), Window(0*Interaction_v_term, TimedOperator(Interaction_v_term_middle,f), TimedOperator(Interaction_v_term,f))]) 
+# environments(Ψ,WindowH)
 
-
-
-WindowH = SumOfOperators([Window(H_without_v,H_without_v,H_without_v), Window(0*Interaction_v_term, TimedOperator(Interaction_v_term_middle,f), TimedOperator(Interaction_v_term,f))]) 
-environments(Ψ,WindowH)
-
-WindowE = environments(Ψ,Window(Hgs,Hgs,Hgs)); # werkt
-WindowE = environments(Ψ,Window(Hgs,Hgs,TimedOperator(Hgs,f))); # werkt
-WindowE = environments(Ψ,Window(Hgs,Hgs,Hgs+Hgs)); # werkt
-WindowE = environments(Ψ, SumOfOperators([Hgs,Hgs])); # werkt
-WindowE = environments(Ψ,Window(Hgs,Hgs,SumOfOperators([Hgs,Hgs]))); # werkt niet
-WindowE = environments(Ψ,Window(Hgs,Hgs,SumOfOperators(TimedOperator(Hgs,f)))); #werkt niet
+# WindowE = environments(Ψ,Window(Hgs,Hgs,Hgs)); # werkt
+# WindowE = environments(Ψ,Window(Hgs,Hgs,TimedOperator(Hgs,f))); # werkt
+# WindowE = environments(Ψ,Window(Hgs,Hgs,Hgs+Hgs)); # werkt
+# WindowE = environments(Ψ, SumOfOperators([Hgs,Hgs])); # werkt
+# WindowE = environments(Ψ,Window(Hgs,Hgs,SumOfOperators([Hgs,Hgs]))); # werkt niet
+# WindowE = environments(Ψ,Window(Hgs,Hgs,SumOfOperators(TimedOperator(Hgs,f)))); #werkt niet
 #WindowE = environments(Ψ,WindowH);
 
 # Einit = expectation_value(Ψ,WindowH,WindowE)
@@ -192,10 +200,18 @@ alg       = TDVP()
 Ψt = copy(Ψ)
 
 #window_dt,WindowE = time_evolve!(Ψt,WindowH,t_end,dt,alg;verbose=true,leftevolve,rightevolve=true)
-window_dt,WindowE = timestep!(Ψt,WindowH,t_end,dt,alg;verbose=true,leftevolve=true,rightevolve=true)
-
-
-
+for i = 1:100
+    # println("Started for i = $(i)")
+    # Ht_left = SumOfOperators([Hgs, f(i*dt)*Hgs])
+    # Ht_mid = SumOfOperators([Hgs, f(i*dt)*Hgs])
+    # Ht_right = SumOfOperators([Hgs, Hgs])
+    # WindowH = Window(Ht_left,Ht_mid,Ht_right);
+    # WindowE = environments(Ψ, WindowH)
+    
+    # does not work with rightevolve = true
+    # does not work with TimedOperator()
+    window_dt,WindowE = timestep!(Ψt,WindowH,t_end,dt,alg,windowE;leftevolve=true,rightevolve=false)
+end
 
 @assert false
 #Hv = onsiteX();

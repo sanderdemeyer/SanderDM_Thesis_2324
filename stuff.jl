@@ -7,13 +7,20 @@ using LinearAlgebra: norm
 using LinearAlgebra
 using Base
 using JLD2
-using MPSKitModels, TensorKit, MPSKit
+# using MPSKitModels, TensorKit, MPSKit
 using Statistics
 
 include("get_groundstate_energy.jl")
 include("get_thirring_hamiltonian.jl")
 include("get_thirring_hamiltonian_symmetric.jl")
 
+N = 20
+a = 7
+b = 11
+lijst = [i < a ? 0 : (i <= b ? (i - a) / (b - a) : 1) for i in 1:N]
+println(lijst)
+
+print(q)
 
 factor_max = 48
 list_of_indices = [0]
