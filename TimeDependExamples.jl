@@ -92,6 +92,19 @@ ground,envs,_ = find_groundstate(ground,Hgs,VUMPS(maxiter=200, tol_galerkin = 1e
 # set up window stuff
 Ψ = WindowMPS(ground,N); # state is a windowMPS
 
+
+Prop(operators) = collect(expectation_value(Ψ, operators))
+
+println("should be $(expectation_value(Ψ, Hgs))")
+summed = SumOfOperators([Hgs, Hgs])
+
+probeersel = sum(Prop.(summed.ops))
+println("manual is $(probeersel)")
+
+probeersel2 = expectation_value(Ψ, summed)
+println("with function, it is $(probeersel2)")
+
+
 X = σˣ()
 xWindow = Window(X,X,X)
 

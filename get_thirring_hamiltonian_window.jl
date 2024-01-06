@@ -24,8 +24,10 @@ function get_thirring_hamiltonian_window(am_tilde_0, Delta_g, v, N, a, b)
     Interaction_v_term = @mpoham (im*v*0.5) * sum(operator_threesite_final{i, i + 1, i + 2} for i in vertices(InfiniteChain(2)))
 
 
-    lijst = [i < a ? 0 : (i <= b ? (i - a) / (b - a) : 1) for i in 1:N]
+    # lijst = [i < a ? 0 : (i <= b ? (i - a) / (b - a) : 1) for i in 1:N] # left = 0, right = 1
+    lijst = [i < a ? 1 : (i <= b ? 1 - (i - a) / (b - a) : 0) for i in 1:N] # left = 1, right = 0
     Interaction_v_term_window = @mpoham (im*v*0.5) * sum(lijst[i]*operator_threesite_final{i, i + 1, i + 2} for i in vertices(InfiniteChain(N)))
-
-    return (Hopping_term, Mass_term, Interaction_term, Interaction_v_term, Interaction_v_term_window)
+    Mass_term_window = am_tilde_0 * @mpoham sum(lijst[i]*J[i] * (S_z_symm + 0.5*id(domain(S_z_symm))){i} for i in vertices(InfiniteChain(2)))
+    
+    return (Hopping_term, Mass_term, Interaction_term, Interaction_v_term, Interaction_v_term_window, Mass_term_window)
 end
