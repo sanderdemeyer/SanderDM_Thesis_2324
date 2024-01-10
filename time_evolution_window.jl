@@ -1,14 +1,20 @@
 using LinearAlgebra
-using Base
+# using Base
+using KrylovKit
 using JLD2
+using TensorKit
 using MPSKitModels, TensorKit, MPSKit
 using Statistics
+
+# include(raw"C:\Users\Sande\Documents\School\0600 - tweesis\Code\MPSKit.jl\src\MPSKit.jl")
+# include(raw"C:\Users\Sande\Documents\School\0600 - tweesis\Code\MPSKitModels.jl\src\MPSKitModels.jl")
 
 include("get_thirring_hamiltonian_symmetric_separate.jl")
 include("get_thirring_hamiltonian_window.jl")
 include("get_groundstate.jl")
 
-function spatial_ramping(i, i_start, i_end)
+
+function spatial_ramping_lin(i, i_start, i_end)
     if i < i_start
         return 0
     elseif i < i_end
@@ -17,6 +23,15 @@ function spatial_ramping(i, i_start, i_end)
     return 1.0
 end
 
+function spatial_ramping_tanh(i, i_middle, κ)
+    return tanh((i-i_middle)*κ)
+end
+
+function spatial_ramping_S(i, i_middle, κ)
+    return 1 - 1/(1+exp(2*κ*(i-i_middle)))
+end
+
+
 function myfinalize(t,Ψ,H,env,tobesaved,O,gl,gs,gr,timefun)
 	zs = map(i->expectation_value(Ψ,O,i),0:length(Ψ)+1)
 	hs = [gl*timefun(t),(timefun(t).*gs)...,gr*timefun(t)]
@@ -24,9 +39,18 @@ function myfinalize(t,Ψ,H,env,tobesaved,O,gl,gs,gr,timefun)
 	return Ψ,env
 end
 
+function save_energy(t,Ψ,H,E,energies)
+    println("energy is $(E)")
+    println("energy2 is $(expectation_value(Ψ.window, H.middle(t)))")
+    push!(energies, expectation_value(Ψ.window, H.middle(t)))
+end
+
 N = 20 # Number of sites
 i_start = 2
 i_end = 18
+i_b = 10
+i_middle = div(N,2)
+κ = 0.5
 
 spatial_sweep = i_end-i_start
 
@@ -39,19 +63,25 @@ Delta_g = 0.0 # voor kleinere g, betere fit op dispertierelatie. Op kleinere reg
 v = 0.0
 v_max = 1.0
 
+
 RAMPING_TIME = 1
 
 f(t) = min(v_max, t/RAMPING_TIME)
 f0(t) = 0.0
 
+lijst_ramping = [spatial_ramping_S(i, i_b, κ) for i in 1:N]
+
 # (Hopping_term, Mass_term, Interaction_term, Interaction_v_term) = get_thirring_hamiltonian_symmetric_separate(1.0, 1.0, 1.0)
-(Hopping_term, Mass_term, Interaction_term, Interaction_v_term, Interaction_v_term_window, Mass_term_window) = get_thirring_hamiltonian_window(1.0, 1.0, 1.0, N, i_start, i_end)
+(Hopping_term, Mass_term, Interaction_term, Interaction_v_term, Interaction_v_term_window, Mass_term_window) = get_thirring_hamiltonian_window(1.0, 1.0, 1.0, N, lijst_ramping)
 H_without_v = Hopping_term + am_tilde_0*Mass_term + Delta_g*Interaction_term
 H_without_mass = Hopping_term + Delta_g*Interaction_term + v*Interaction_v_term
 
-truncation = 2.5
+truncation = 1.5
 # (gs_mps, gs_envs) = get_groundstate(am_tilde_0, Delta_g, v, [20 50], truncation, 8.0)
 (gs_mps, gs_envs) = get_groundstate(am_tilde_0, Delta_g, v, [5 10], truncation, 8.0; number_of_loops = 2)
+
+@save "test_gs_mps" gs_mps
+@assert false
 
 Ψ = WindowMPS(gs_mps,N); # state is a windowMPS
 
@@ -91,6 +121,7 @@ WindowE = environments(Ψ,WindowH);
 
 t = 0.0
 tobesaved = []
+energies = []
 t_span    = 0:dt:t_end
 number_of_timesteps = t_end/dt
 # alg       = TDVP(finalize=(t,Ψ,H,E)->myfinalize(t,Ψ,H,E,tobesaved,xWindow,g,gs,0.0))
@@ -98,7 +129,7 @@ number_of_timesteps = t_end/dt
 alg       = TDVP()
 Ψt = copy(Ψ)
 
-number_of_timesteps = 200
+number_of_timesteps = 20
 
 frequency_of_VUMPS = 10
 
@@ -108,6 +139,13 @@ println(typeof(t_end/dt))
 energies = zeros(ComplexF64, (N, number_of_timesteps))
 gs_energies = zeros(ComplexF64, (N, div(number_of_timesteps,frequency_of_VUMPS)+1))
 
+Ht_right = H_without_v + TimedOperator(Interaction_v_term, f0)
+Ht_mid = repeat(H_without_v,N) + TimedOperator(Interaction_v_term_window,f)
+Ht_left = H_without_v + TimedOperator(Interaction_v_term,f)
+
+WindowH = Window(Ht_left,Ht_mid,Ht_right);
+WindowE = environments(Ψ,WindowH);
+
 for n = 1:number_of_timesteps
     global t
     global WindowE
@@ -115,23 +153,26 @@ for n = 1:number_of_timesteps
     t += dt
     println("Timestep n = $(n), t = $(t)")
 
+    Ψt,WindowE = timestep!(Ψt,WindowH,t,dt,alg,WindowE;leftevolve=true,rightevolve=false)
+
+    E_values = expectation_value(Ψt.window, WindowH.middle(t))
+    energies[:,n] = E_values
+
     # Ht_right = SumOfOperators([H_without_v, 0*Interaction_v_term])
     # Ht_mid = SumOfOperators([repeat(H_without_v,N), f(t)*Interaction_v_term_window])
     # Ht_left = SumOfOperators([H_without_v, f(t)*Interaction_v_term])
 
     # mass sweep
-    Ht_left = SumOfOperators([H_without_mass, f(t)*Mass_term])
-    Ht_mid = SumOfOperators([repeat(H_without_mass,N), f(t)*Mass_term_window])
-    Ht_right = SumOfOperators([H_without_mass, 0*Mass_term])
+    # Ht_left = SumOfOperators([H_without_mass, f(t)*Mass_term])
+    # Ht_mid = SumOfOperators([repeat(H_without_mass,N), f(t)*Mass_term_window])
+    # Ht_right = SumOfOperators([H_without_mass, 0*Mass_term])
+
 
     # Ht_right = SumOfOperators([H_without_v, TimedOperator(Interaction_v_term, f0)])
     # Ht_mid = SumOfOperators([repeat(H_without_v,N), TimedOperator(Interaction_v_term_window,f)])
     # Ht_left = SumOfOperators([H_without_v, TimedOperator(Interaction_v_term,f)])
 
-    WindowH = Window(Ht_left,Ht_mid,Ht_right);
-    WindowE = environments(Ψ,WindowH);
 
-    Ψt,WindowE = timestep!(Ψt,WindowH,t,dt,alg,WindowE;leftevolve=true,rightevolve=false)
     # window_dt,WindowE = time_evolve!(Ψt,WindowH,t_span,alg,WindowE;verbose=true,rightevolve=true)
 
     # if (n % frequency_of_VUMPS == 0)
@@ -140,10 +181,6 @@ for n = 1:number_of_timesteps
     #     gs_energies[div(n,frequency_of_VUMPS)] = true_gs_energy
     # end
 
-    E_values = expectation_value(Ψt.window, Ht_mid)
-    energies[:,n] = E_values
 end
-
-println(energies)
 
 @save "window_time_evolution_mass_sweep_mass_$(am_tilde_0)_delta_g_$(Delta_g)_ramping_$(RAMPING_TIME)_dt_$(dt)_vmax_$(v_max)_spatialsweep_$(spatial_sweep)_trunc_$(truncation)" energies gs_energies
