@@ -47,6 +47,7 @@ for i, m in enumerate(m_values):
     print(i)
     print(m)
     E_gs_values[i] = integrate.quad(lambda k: f(k,m), -np.pi, np.pi)[0]
+    E_gs_values[i] = 2*integrate.quad(lambda k: f(k,m), -np.pi, 0)[0]
 
 print(m_values)
 print(E_gs_values)
@@ -72,6 +73,7 @@ print(np.shape(energies50_more))
 #print(np.shape(energies_nonsym))
 print(np.shape(E_gs_values))
 
+"""
 #plt.scatter(masses, [abs(energies30[i] - e)/e for (i,e) in enumerate(E_gs_values)], label = 'VUMPS, D = 30')
 #plt.scatter(masses, [abs(energies50[i] - e)/e for (i,e) in enumerate(E_gs_values)], label = 'VUMPS, D = 50')
 plt.scatter(masses, [abs(energies50_more[i] - e)/e for (i,e) in enumerate(E_gs_values)], label = 'VUMPS, D = 50, more spaces')
@@ -81,3 +83,4 @@ plt.ylabel(r'error on $E_{gs}$', fontsize = 15)
 plt.title(r"Ground state energy density for $ g = 0 $, $ v = 0 $")
 plt.legend()
 plt.show()
+"""

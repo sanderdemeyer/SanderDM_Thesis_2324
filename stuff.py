@@ -1,6 +1,21 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+def spatial_ramping_S(i, i_middle, k):
+    return 1 - 1/(1+np.exp(2*k*(i-i_middle)))
+
+
+N = 100
+i_b = 50
+kappa = 0.2
+
+lijst_ramping = [spatial_ramping_S(i, i_b, kappa) for i in range(1,N)]
+
+plt.plot(range(1,N), lijst_ramping)
+plt.show()
+
+print(a)
+
 def gaussian_wave_packet(k, sigma):
     return np.exp(-(k/(2*sigma))**2)
 

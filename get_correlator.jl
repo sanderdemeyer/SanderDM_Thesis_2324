@@ -4,20 +4,24 @@ using JLD2
 using TensorKit
 using MPSKitModels, TensorKit, MPSKit
 using Statistics
-using QuadGK
 using Plots
 
-N = 10
-
 function gaussian_wave_packet(k, σ)
-    return exp(-(k/(2*σ))^2)
+    return exp(-((k%(2*pi))/(2*σ))^2)
 end
 
 function _Pk_matrix(k, m, v)
-    c1 = (1im/2)*(1-exp(im*k))
-    c2 = (m+(v/2)*sin(k))
-    norm = sqrt(abs(c1)^2+abs(c2)^2)
-    return (c1/norm, c2/norm)
+    return (1.0, 0.0)
+    if (m == 0.0 && v == 0.0)
+        a = 1.0
+        b = -exp(im*k/2)
+    else 
+        λ = (v/2)*sin(k) + sqrt(m^2 + (sin(k/2))^2)
+        a = (m+(v/2)*sin(k)) - λ
+        b = -(1im/2)*(1-exp(im*k))            
+    end
+    norm = sqrt(abs(a)^2+abs(b)^2)
+    return (-b/norm, a/norm)
 end
 
 function _integrand_wave_packet_occupation_number(k₁, k₂, ω, x₀, σ, m, v, corr::Matrix)
@@ -46,13 +50,13 @@ function _integrand_wave_packet_occupation_number(k₁, k₂, ω, x₀, σ, m, v
     return factor*sum
 end
 
-function wave_packet_occupation_number(omega, x₀, σ, m, v, corr::Matrix)
-    dk = pi/N
+function wave_packet_occupation_number(ω, x₀, σ, m, v, corr::Matrix)
+    dk = 2*pi/N
     occupation_number = 0
-    for i₁ = -N:N
-        for i₂ = -N:N
+    for i₁ = 0:N-1
+        for i₂ = 0:N-1
             # println("started for k1 = $(i₁) and k2 = $(i₂)")
-            occupation_number += _integrand_wave_packet_occupation_number(dk*i₁, dk*i₂, omega, x₀, σ, m, v, corr)
+            occupation_number += _integrand_wave_packet_occupation_number(dk*i₁, dk*i₂, ω, x₀, σ, m, v, corr)
         end
     end
     return occupation_number
@@ -92,9 +96,9 @@ end
 println(typeof(corr))
 println(corr)
 
-x₀ = 5
+x₀ = 1
 σ = 10/N
-m = 0.4
+m = 0.0
 v = 0.0
 
 k_max = pi
@@ -119,7 +123,7 @@ end
 # # println(correlator(gs_mps, S⁺, S⁻, 3, 4:7))
 
 
-plot(X, Y)
+plt = plot(X, Y)
 title!("Plot 1")
 display(plt)
 plot(ωs, Y)
