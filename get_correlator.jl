@@ -13,10 +13,11 @@ end
 function _Pk_matrix(k, m, v)
     return (1.0, 0.0)
     if (m == 0.0 && v == 0.0)
-        a = 1.0
-        b = -exp(im*k/2)
+        a_help = -(1im/2)*(1-exp(im*k))
+        a = conj(a)
+        b = abs(a_help)
     else 
-        λ = (v/2)*sin(k) + sqrt(m^2 + (sin(k/2))^2)
+        λ = (v/2)*sin(k) - sqrt(m^2 + (sin(k/2))^2)
         a = (m+(v/2)*sin(k)) - λ
         b = -(1im/2)*(1-exp(im*k))            
     end
@@ -31,6 +32,7 @@ function _integrand_wave_packet_occupation_number(k₁, k₂, ω, x₀, σ, m, v
     sum = 0
     for m = 1:div(N,2)
         for n = 1:div(N,2)
+            #=
             # sum += exp(-1im*k₁*(2*n+x₀)+1im*k₂*(2*m+x₀)) * conj(c11)*c12 * corr[2*n,2*m]
             sum += exp(-1im*k₁*(n+x₀)+1im*k₂*(m+x₀)) * conj(c11)*c12 * corr[2*n,2*m]
             if 2*n+1 <= N
@@ -44,6 +46,13 @@ function _integrand_wave_packet_occupation_number(k₁, k₂, ω, x₀, σ, m, v
             if (2*n+1 <= N) && (2*m+1 <= N)
                 # sum += exp(-1im*k₁*(2*n+1+x₀)+1im*k₂*(2*m+1+x₀)) * conj(c21)*c22 * corr[2*n+1,2*m+1]
                 sum += exp(-1im*k₁*(n+x₀)+1im*k₂*(m+x₀)) * conj(c21)*c22 * corr[2*n+1,2*m+1]
+            end
+            =#
+            if ((2*n+1 <= N) && (2*m+1 <= N))
+                sum += exp(-1im*k₁*(x₀-n)+1im*k₂*(x₀-m)) * conj(c11)*c12 * corr[2*n,2*m]
+                sum += exp(-1im*k₁*(x₀-n)+1im*k₂*(x₀-m)) * conj(c21)*c12 * corr[2*n+1,2*m]
+                sum += exp(-1im*k₁*(x₀-n)+1im*k₂*(x₀-m)) * conj(c11)*c22 * corr[2*n,2*m+1]
+                sum += exp(-1im*k₁*(x₀-n)+1im*k₂*(x₀-m)) * conj(c21)*c22 * corr[2*n+1,2*m+1]
             end
         end
     end
@@ -84,7 +93,7 @@ U = Tensor(ones, pspace)
 
 println(U)
 
-N = 50
+N = 100
 
 corr = zeros(ComplexF64, N, N)
 
@@ -96,7 +105,8 @@ end
 println(typeof(corr))
 println(corr)
 
-x₀ = 1
+N = 100
+x₀ = 50
 σ = 10/N
 m = 0.0
 v = 0.0
@@ -122,6 +132,7 @@ end
 # println(typeof(occ))
 # # println(correlator(gs_mps, S⁺, S⁻, 3, 4:7))
 
+@save "test_newww" X Y ωs ωs2
 
 plt = plot(X, Y)
 title!("Plot 1")

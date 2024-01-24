@@ -5,9 +5,9 @@ def spatial_ramping_S(i, i_middle, k):
     return 1 - 1/(1+np.exp(2*k*(i-i_middle)))
 
 
-N = 100
-i_b = 50
-kappa = 0.2
+N = 30
+i_b = 15
+kappa = 0.5
 
 lijst_ramping = [spatial_ramping_S(i, i_b, kappa) for i in range(1,N)]
 
