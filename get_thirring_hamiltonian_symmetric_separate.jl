@@ -23,5 +23,9 @@ function get_thirring_hamiltonian_symmetric_separate(am_tilde_0, Delta_g, v)
     Interaction_term = @mpoham Delta_g * sum(Sz_plus_12{i}*Sz_plus_12{i+1} for i in vertices(InfiniteChain(2)))
     Interaction_v_term = @mpoham (im*v*0.5) * sum(operator_threesite_final{i, i + 1, i + 2} for i in vertices(InfiniteChain(2)))
 
+    H_hop = -S_xx_S_yy
+
+    @save "Hopping_term" H_hop
+
     return (Hopping_term, Mass_term, Interaction_term, Interaction_v_term)
 end

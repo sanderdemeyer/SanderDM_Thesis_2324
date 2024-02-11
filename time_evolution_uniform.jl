@@ -36,7 +36,7 @@ max_time_steps = 6000 #3000 #7000
 # am_tilde_0 = f(0) # best gewoon wat groter.
 Delta_g = 0.0 # voor kleinere g, betere fit op dispertierelatie. Op kleinere regio fitten. Probeer voor delta_g = 0 te kijken of ik exact v of -v kan fitten in de dispertierelatie
 v = 0.0
-mass_v_sweep = 0.6
+mass_v_sweep = 0.0
 
 # g-->0: continuumlimiet, exact.
 # zou kunnen dat v gehernomaliseerd wordt, dus v > 1 kan grondtoestand vinden maar v < veff
@@ -54,11 +54,15 @@ H_v = Interaction_v_term
 truncation = 2.5
 
 println("started")
-(mps, envs) = get_groundstate(mass_v_sweep, Delta_g, v, [5 10], truncation, 8.0)
+(mps, envs) = get_groundstate(mass_v_sweep, Delta_g, v, [20 50], truncation, 8.0)
 #(mps, envs) = get_groundstate(mass_v_sweep, Delta_g, v, [20 50], truncation, 8.0)
 
 tot_bonddim = dims((mps.AL[1]).codom)[1] + dims((mps.AL[1]).dom)[1]
 println("Tot bonddim is $tot_bonddim")
+
+@save "gs_mps_trunc_$(truncation)_mass_$(mass_v_sweep)_v_$(v)_Delta_g_$(Delta_g)" mps
+
+assert(false)
 
 fidelity = @tensor mps.AC[1][1 2; 3] * conj(mps.AC[1][1 2; 3])
 println(fidelity)

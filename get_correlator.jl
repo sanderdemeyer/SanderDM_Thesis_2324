@@ -11,15 +11,16 @@ function gaussian_wave_packet(k, σ)
 end
 
 function _Pk_matrix(k, m, v)
-    return (1.0, 0.0)
+    # return (1.0, 0.0)
     if (m == 0.0 && v == 0.0)
         a_help = -(1im/2)*(1-exp(im*k))
-        a = conj(a)
+        # λ = -abs(a_help)
+        a = conj(a_help)
         b = abs(a_help)
     else 
         λ = (v/2)*sin(k) - sqrt(m^2 + (sin(k/2))^2)
         a = (m+(v/2)*sin(k)) - λ
-        b = -(1im/2)*(1-exp(im*k))            
+        b = -(1im/2)*(1-exp(im*k))
     end
     norm = sqrt(abs(a)^2+abs(b)^2)
     return (-b/norm, a/norm)
@@ -72,7 +73,7 @@ function wave_packet_occupation_number(ω, x₀, σ, m, v, corr::Matrix)
 end
 
 
-@load "SanderDM_Thesis_2324/test_gs_mps" gs_mps
+@load "SanderDM_Thesis_2324/gs_mps_trunc_2.5_mass_0.0_v_0.0_Delta_g_0.0" mps
 
 
 spin = 1//2
@@ -98,7 +99,7 @@ N = 100
 corr = zeros(ComplexF64, N, N)
 
 for i = 1:N
-    corr[i,:] = correlator(gs_mps, S⁺, S⁻, S_z_symm, i, N)
+    corr[i,:] = correlator(mps, S⁺, S⁻, S_z_symm, i, N)
     # change unit_tensor to (-2im*S_z_symm)
 end
 

@@ -21,10 +21,10 @@ dt = 0.01
 nrsteps = 600
 vmax = 1.1
 kappa = 0.5
-trunc = 2.0
+trunc = 3.0
 savefrequency = 10
 
-@load "SanderDM_Thesis_2324/window_time_evolution_v_sweep_N_30_mass_0.0_delta_g_0.0_ramping_5_dt_0.01_nrsteps_600_vmax_1.1_kappa_0.5_trunc_2.0_savefrequency_10" MPSs
+@load "SanderDM_Thesis_2324/window_time_evolution_v_sweep_N_$(N)_mass_$(mass)_delta_g_$(delta_g)_ramping_$(ramping)_dt_$(dt)_nrsteps_$(nrsteps)_vmax_$(vmax)_kappa_$(kappa)_trunc_$(trunc)_savefrequency_$(savefrequency)" MPSs
 
 N = 30
 
