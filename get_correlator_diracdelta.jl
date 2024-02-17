@@ -9,10 +9,6 @@ using LaTeXStrings
 
 include("get_thirring_hamiltonian_symmetric.jl")
 
-#=
-
-include("get_thirring_hamiltonian_symmetric.jl")
-
 
 function _Pk_matrix(k, m, v)
     # return (1.0, 0.0)
@@ -89,6 +85,9 @@ function _c_matrix(k, m, v)
     return (c₊¹/norm, c₊²/norm)
 end
 
+function gaussian(k, k₀, σ, x₀)
+    return (abs(k-k₀) < 1e-5)*1
+end
 
 function _integrand_wave_packet_occupation_number(k₀, x₀, m, v, corr::Matrix)
     (c¹, c²) = _c_matrix(k₀, m, v)
@@ -107,13 +106,14 @@ end
 
 function wave_packet_occupation_number(k₀, x₀, m, v, corr::Matrix, corr_energy::Matrix)
     occupation_number = _integrand_wave_packet_occupation_number(k₀, x₀, m, v, corr)
-    # energy = _integrand_wave_packet_occupation_number(k₀, x₀, m, v, corr_energy)
-    energy = 0
+    energy = _integrand_wave_packet_occupation_number(k₀, x₀, m, v, corr_energy)
     return (occupation_number, energy)
 end
 
 
 @load "SanderDM_Thesis_2324/gs_mps_trunc_2.5_mass_0.0_v_0.0_Delta_g_0.0" mps
+
+
 
 m = 0.0
 delta_g = 0.0
@@ -143,12 +143,9 @@ U = Tensor(ones, pspace)
 
 println(U)
 
-N = 50
+N = 30
 
-corr = zeros(ComplexF64, 2*N, 2*N)
-corr_energy = zeros(ComplexF64, 2*N, 2*N)
 
-=#
 
 spin = 1//2
 pspace = U1Space(i => 1 for i in (-spin):spin)
@@ -194,6 +191,12 @@ println(typeof(right))
 println("H = ")
 println(H_hop)
 
+unit_operator = TensorMap([1.0+0.0im 0.0+0.0im; 0.0+0.0im 1.0+0.0im], pspace, pspace)
+unit_MPO = @mpoham sum((unit_operator){i} for i in vertices(InfiniteChain(2)))
+
+unit_operator = add_util_leg(unit_operator)
+
+
 U_H_left = Tensor(ones, space(left)[1])
 U_H_right = Tensor(ones, space(right)[4])
 
@@ -207,96 +210,96 @@ unit_right = TensorMap([1.0+0.0im 0.0+0.0im; 0.0+0.0im 1.0+0.0im], conj(space(ri
 
 @load "everything_needed" N mps S⁺ S⁻ S_z_symm H
 
+# tensors = [i%2 == 0 ? mps.AR[2] : mps.AR[1] for i in 1:N]
+# tensors[1] = mps.AC[1]
+
+# state = FiniteMPS(tensors)
+
 # op_index = 4
 i = 1
 O₁ = S⁺
 O₂ = S⁻
 middle_t = S_z_symm
-# H_list = fill(unit_left, N)
-
-# H_list[op_index] = left
-# H_list[op_index+1] = right
-
-# for i = op_index+2:N
-#     H_list[i] = unit_right
-# end
-
-# U_H_left = Tensor(ones, space(H_list[i])[1])
-# U_H_right = Tensor(ones, space(H_list[i])[4])
-
-U_space₁ = Tensor(ones, space(O₁)[1])
-U_space₂ = Tensor(ones, space(O₂)[4])
-
-tensors = [i%2 == 0 ? mps.AR[2] : mps.AR[1] for i in 1:N]
-tensors[1] = mps.AC[1]
-
-state = FiniteMPS(tensors)
-
-G = similar(1:N, scalartype(state))
-
-for op_index = 1:N-1
-
-    println("op_index = $(op_index) of N = $(N)")
-    H_list = fill(unit_left, N)
-
-    H_list[op_index] = left
-    H_list[op_index+1] = right
-
-    U_H_left = Tensor(ones, space(H_list[i])[1])
-    U_H_right = Tensor(ones, space(H_list[i])[4])
-
-    for i₂ = op_index+2:N
-        H_list[i₂] = unit_right
-    end
-
-    @tensor Vₗ[-1 -2; -3 -4] := state.AC[i][1 2; -4] * conj(U_space₁[3]) * O₁[3 4; 2 -3] * H_list[i][5 6; 4 -2] * conj(U_H_left[5]) * conj(state.AC[i][1 6; -1])
-    @tensor Vᵣ[-1 -2; -3 -4] := state.AC[i][-1 2; 1] * H_list[i][-2 4; 2 3] * conj(U_H_right[3]) * O₂[-3 6; 4 5] * conj(U_space₂[5]) * conj(state.AC[i][-4 6; 1])
-
-    for j = i-1:-1:1 # j < i ==> factor -i
-        # global Vᵣ
-        if j < i-1
-            @tensor Vᵣ[-1 -2; -3 -4] := (-2im) * Vᵣ[1 4; -3 6] * (state.AL[j+1])[-1 2; 1] * middle_t[3; 2] * H_list[j+1][-2 5; 3 4] * conj((state.AL[j+1])[-4 5; 6])
-        end
-        U_H_left = Tensor(ones, space(H_list[j])[1])
-        G[j] = 1im*(@tensor Vᵣ[4 8; 5 10] * state.AL[j][1 2; 4] * O₁[3 6; 2 5] * conj(U_space₁[3]) * H_list[j][7 9; 6 8] * conj(U_H_left[7]) * conj(state.AL[j][1 9; 10]))
-    end
-    U_H_left = Tensor(ones, space(H_list[i])[1])
-    U_H_right = U_H_right = Tensor(ones, space(H_list[i+1])[4])
-    G[i] = @tensor (state.AC[i])[1 2; 10] * O₂[5 4; 2 3] * conj(U_space₂[3]) * H_list[i][6 7; 4 12] * conj(U_H_left[6]) * O₁[8 9; 7 5] * conj(U_space₁[8]) * conj((state.AC[i])[1 9; 15]) * (state.AR[i+1])[10 11; 16] * H_list[i+1][12 14; 11 13] * conj(U_H_right[13]) * conj((state.AR[i+1])[15 14; 16])
-    for j = i+1:N # j > i ==> factor i and conjugate
-        # global Vₗ
-        # global U_H_right
-        if j > i+1
-            @tensor Vₗ[-1 -2; -3 -4] := (2im) * Vₗ[1 4; -3 1] * (state.AR[j-1])[1 2; -4] * middle_t[3; 2] * H_list[j-1][4 5; 3 -2] * conj((state.AR[j-1])[1 5; -1])
-        end
-        U_H_right = Tensor(ones, space(H_list[j])[4])
-        # @tensor G[-3 -4 -6 -8] := -1im*(Vₗ[9 -6; 7 1] * state.AR[j][1 2; 10] * conj(state.AR[j][9 -4; 10])) * H_list[j][7 -3; 2 -8]
-        # @tensor G[-3 -4 -5 -6] := -1im*(Vₗ[9 -5; -6 1] * state.AR[j][1 2; 10] * conj(state.AR[j][9 -4; 10])) * H_list[j][7 -3; 2 -7]
-        G[j] = -1im*(@tensor Vₗ[9 7; 4 1] * state.AR[j][1 2; 10] * H_list[j][7 5; 2 3] * conj(U_H_right[3]) * O₂[4 8; 5 6] * conj(U_space₂[6]) * conj(state.AR[j][9 8; 10]))
-    end
-end
-
-
-
-break
-
-# @save "Hopping_term" H_hop
 
 # @load "Hopping_term" H_hop
 @load "everything_needed" N mps S⁺ S⁻ S_z_symm H
 
-for i = 1:2*N
-    # corr[i,:] = correlator(mps, S⁺, S⁻, S_z_symm, i, 2*N)
-    corr_energy[i,:] = correlator(mps, S⁺, S⁻, S_z_symm, left, right, i, 2*N)
+@load "SanderDM_Thesis_2324/gs_mps_trunc_2.5_mass_0.0_v_0.0_Delta_g_0.0" mps
+
+N = 30
+
+corr = zeros(ComplexF64, 2*N, 2*N)
+corr_energy = zeros(ComplexF64, 2*N, 2*N)
+corr_energy_check = zeros(ComplexF64, 2*N, 2*N)
+
+# corr_check = zeros(ComplexF64, 2*N, 2*N)
+# for i = 2:2*N+1
+#     println("i = $(i)")
+#     corr_bigger = correlator(mps, S⁺, S⁻, S_z_symm, unit_operator, unit_operator, i, 2*N+2)
+#     corr_check[i-1,:] = corr_bigger[2:2*N+1]
+# end
+
+
+for i = 2:2*N+1
+    println("i = $(i)")
+    corr_bigger = correlator(mps, S⁺, S⁻, S_z_symm, i, 2*N+2)
+    # corr_energy_bigger = correlator(mps, S⁺, S⁻, S_z_symm, H, i, 2*N+2)
+    # corr_energy_check_bigger = correlator(mps, S⁺, S⁻, S_z_symm, unit_MPO, i, 2*N+2)
+    corr[i-1,:] = corr_bigger[2:2*N+1]
+    # corr_energy[i-1,:] = corr_energy_bigger[2:2*N+1]
+    # corr_energy_check[i-1,:] = corr_energy_check_bigger[2:2*N+1]
+
     # corr_energy[i,:] = correlator(mps, S⁺, S⁻, H_with_S_z_symm, i, N)
     # change unit_tensor to (-2im*S_z_symm)
 end
 
-x₀ = 50
+for i = 1:2*N
+    for j = 1:i-1
+        corr_energy[i,j] = conj(corr_energy[j,i])
+        corr_energy_check[i,j] = conj(corr_energy_check[j,i])
+    end
+end
+
+corr_energy_check2 = zeros(ComplexF64, 2*N, 2*N)
+
+for i = 1:2*N
+    for j = 1:2*N
+        if (i == j)
+            corr_energy_check2[i,j] = corr_energy_check[i,j]
+        else
+            corr_energy_check2[i,j] = corr_energy_check[i,j]/2
+        end
+    end
+end
+
+corr_ratio = zeros(ComplexF64, 2*N, 2*N)
+for i = 1:2*N
+    for j = 1:2*N
+        corr_ratio[i,j] = corr[i,j]/corr_energy_check[i,j]
+    end
+end
+
+break
+
+for i = 1:2*N
+    for j = 1:2*N
+        if isnan(real(corr_energy[i,j]))
+            println("for i = $(i) and j = $(j), corr is $(corr_energy[i,j])")
+            corr_energy[i,j] = 0.0
+        end
+        if isnan(imag(corr_energy[i,j]))
+            println("for i = $(i) and j = $(j), corr is $(corr_energy[i,j])")
+            corr_energy[i,j] = 0.0
+        end
+    end
+end
+# break;
+
+x₀ = div(N,2)
 σ = 10/N
 
 k_max = pi
-data_points = 100
+data_points = N
 
 
 X = [(2*pi)/N*i - pi for i = 0:N-1]
@@ -306,15 +309,46 @@ Ê = zeros(Float64, data_points)
 for (index, k₀) in enumerate(X)
     (occ,e) = wave_packet_occupation_number(k₀, x₀, m, v, corr, corr_energy)
     println("occ for k0 = $(k₀) is $(occ)")
-    # println("energy for k0 = $(k₀) is $(e)")
+    println("energy for k0 = $(k₀) is $(e)")
     N̂[index] = real(occ)
     Ê[index] = real(e)
 end
 
-@save "test_newwww" X N̂ Ê
+@save "test_new_N_$(N)" X N̂ Ê
 
 
 # plt = plot(N̂, Ê)
-plt = plot(N̂, xlabel = "k", ylabel = L"$\left<\hat{N}\right>$")
+plt = plot(X, N̂, xlabel = "k", ylabel = L"$\left<\hat{N}\right>$")
+title!("Occupation number for N = $(N)")
+display(plt)
+savefig("Occupation number for N = $(N)")
+
+break;
+
+plt = plot(X, Ê, xlabel = "E", ylabel = L"$\left<\hat{N}\right>$")
+title!("Occupation number in function of E")
+display(plt)
+
+E_here = zeros(Float64, 25)
+X_here = zeros(Float64, 25)
+for i = 1:25
+    E_here[i] = Ê[i]
+    X_here[i] = X[i]
+end
+
+plt = plot(Ê, xlabel = "k", ylabel = L"$\left<\hat{E}\right>$")
 title!("Occupation number in function of k")
 display(plt)
+
+a = 70
+b = 31.8
+X_accurate = LinRange(-pi, 0, 1000)
+Y_accurate = [a - b*sin(k/2) for k in X_accurate]
+
+plt = plot(X_here, E_here, xlabel = "k", ylabel = L"$\left<\hat{E}\right>$", label = "data")
+plt2 = plot(X_accurate, Y_accurate)
+plot!(plt, X_accurate, Y_accurate, label="fit")
+title!("title")
+display(plt)
+
+

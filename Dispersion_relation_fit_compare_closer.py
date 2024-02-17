@@ -79,7 +79,7 @@ for (ind, closer) in enumerate([1 + i for i in range(max_index)]):
 
 function_to_fit = fit_exp
 
-show = []
+show = ["c"]
 error_bars = False
 extrapolation_in_factor = False
 parabola_factor_values = np.linspace(0, max_index, 1000)
@@ -100,12 +100,11 @@ delta_g_range = 4
 if "v" in show:
     for m_index in range(1,7):
         for (i,delta_g) in enumerate([-0.15*i for i in range(1, delta_g_range)]):
-            """
             popt, pcov = curve_fit(function_to_fit, [1 + i for i in range(max_index)], v_renorms[:,0,i,m_index-excluded_0], (m_index*0.1, 0, 1))
             factor_list = np.linspace(0, max_index, 1000)
             fitted_sqrt = [function_to_fit(j, popt[0], popt[1], popt[2]) for j in factor_list]
             plt.plot(factor_list, fitted_sqrt)   
-            """
+            plt.show()
             if error_bars:
                 plt.errorbar([1 + j for j in range(max_index)], v_renorms[:,0,i,m_index-excluded_0]/(-0.15), v_sigma_renorms[:,0,i,m_index-excluded_0]/(0.15), label = fr'mass = {round(m_index*0.1,2)}, $\Delta(g)$ = {delta_g}', fmt="o")
             else:

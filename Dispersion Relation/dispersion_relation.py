@@ -6,8 +6,8 @@ from sklearn.metrics import r2_score
 import csv
 
 delta_g = 0.0
-mass = 0.5
-v = 0.9
+mass = 1.0
+v = 1.3
 
 file = "testjeee"
 file = "2023_10_24_dispersion_relation_small_k_values"
@@ -25,6 +25,9 @@ file = "2023_10_24_dispersion_relation_small_k_values_m_0p5_v_0_symmetric_sector
 file = "2023_10_24_dispersion_relation_small_k_values_m_0p5_v_0_symmetric_sector_1"
 file = "2023_10_24_dispersion_relation_small_k_values_m_0p5_v_0p1_symmetric_sector_1"
 file = "Dispersion Relation/2023_10_24_dispersion_relation_small_k_values_m_0p5_v_0p9_symmetric_sector_1"
+file = "Dispersion_Delta_m_1.0_delta_g_0.0_v_0.0"
+file = "Dispersion_Delta_m_1.0_delta_g_0.0_v_0.0_irrep_1"
+# file = "Dispersion_Delta_m_1.0_delta_g_-0.5_v_0.9_irrep_1"
 
 f = h5py.File(file, "r")
 energies = f["energies"][:]
@@ -37,16 +40,18 @@ print(energies)
 k = np.linspace(-np.pi/6,np.pi/6,11)
 k_refined = np.linspace(-np.pi/6, np.pi/6, 1000)
 
-k = np.linspace(-np.pi/2,np.pi/2,17)
+k = np.linspace(-np.pi/2,np.pi/2,35)
 k_refined = np.linspace(-np.pi/2, np.pi/2, 1000)
 
 exp = (v/2)*np.sin(2*k_refined) + np.sqrt(mass**2 + np.sin(k_refined)**2)
 # Factor 2 door staggering?
 
-plt.scatter(k, np.array(energies), label = 'quasiparticle')
+print(len(k))
+print(len(energies))
+# plt.scatter(k, np.array(energies), label = 'quasiparticle')
 plt.plot(-k_refined, exp, label = 'analytical')
 plt.xlabel('k')
 plt.ylabel('energy')
 plt.legend()
-plt.title(r"Dispersion relation for $m = 0.5$ and $v = 0.9$, sector $U1(1)$")
+plt.title(r"Dispersion relation for $m = 1.0$, $v = 0.0$, and $\Delta(g)=0.0$, sector $U1(1)$")
 plt.show()
