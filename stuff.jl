@@ -14,6 +14,16 @@ include("get_groundstate_energy.jl")
 include("get_thirring_hamiltonian.jl")
 include("get_thirring_hamiltonian_symmetric.jl")
 
+testt = 0.0
+
+for i = 1:10
+    global testt
+
+    testt += 0.2
+    println(testt)
+end
+
+
 N = 20
 a = 7
 b = 11

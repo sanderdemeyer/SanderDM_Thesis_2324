@@ -28,7 +28,13 @@ function spatial_ramping_tanh(i, i_middle, κ)
 end
 
 function spatial_ramping_S(i, i_middle, κ)
-    return 1 - 1/(1+exp(2*κ*(i-i_middle)))
+    value = 1 - 1/(1+exp(2*κ*(i-i_middle)))
+    if value < 1e-4
+        return 0.0
+    elseif value > 1 - 1e-4
+        return 1.0
+    end
+    return value
 end
 
 
@@ -46,23 +52,26 @@ end
 # end
 
 N = 20 # Number of sites
-i_b = div(N,2)
-κ = 0.5
+
+@assert N % 2 == 0
+
+i_b = div(2*N,3)
+κ = 1.0
 lijst_ramping = [spatial_ramping_S(i, i_b, κ) for i in 1:N]
 
 # spatial_sweep = i_end-i_start
 
-dt = 0.01
-max_time_steps = 100 #3000 #7000
+dt = 0.1
+max_time_steps = 150 #3000 #7000
 t_end = dt*max_time_steps
 
-am_tilde_0 = 0.0
+am_tilde_0 = 1.0
 Delta_g = 0.0 # voor kleinere g, betere fit op dispertierelatie. Op kleinere regio fitten. Probeer voor delta_g = 0 te kijken of ik exact v of -v kan fitten in de dispertierelatie
 v = 0.0
-v_max = 1.5
+v_max = 2.0
 
 
-RAMPING_TIME = 10
+RAMPING_TIME = 5
 f(t) = min(v_max, t/RAMPING_TIME)
 f0(t) = 0.0
 
@@ -71,7 +80,7 @@ truncation = 1.5
 (Hopping_term, Mass_term, Interaction_term, Interaction_v_term, Interaction_v_term_window, Mass_term_window) = get_thirring_hamiltonian_window(1.0, 1.0, 1.0, N, lijst_ramping)
 H_without_v = Hopping_term + am_tilde_0*Mass_term + Delta_g*Interaction_term
 
-(gs_mps, gs_envs) = get_groundstate(am_tilde_0, Delta_g, v, [5 10], truncation, 8.0; number_of_loops = 2)
+(gs_mps, gs_envs) = get_groundstate(am_tilde_0, Delta_g, v, [5 10], truncation, 8.0; number_of_loops=4)
 
 Ψ = WindowMPS(gs_mps,N); # state is a windowMPS
 
@@ -123,16 +132,19 @@ alg       = TDVP()
 # energies = zeros(ComplexF64, (N, number_of_timesteps))
 # gs_energies = zeros(ComplexF64, (N, div(number_of_timesteps,frequency_of_VUMPS)+1))
 
-frequency_of_saving = 10
+frequency_of_saving = 1
 
-Ht_right = H_without_v + TimedOperator(Interaction_v_term, f0)
-Ht_mid = repeat(H_without_v,N) + TimedOperator(Interaction_v_term_window,f)
-Ht_left = H_without_v + TimedOperator(Interaction_v_term,f)
+break
+
+Ht_right = H_without_v + TimedOperator(Interaction_v_term, f)
+Ht_mid = repeat(H_without_v,div(N,2)) + TimedOperator(Interaction_v_term_window,f)
+Ht_left = H_without_v + TimedOperator(Interaction_v_term,f0)
 
 WindowH = Window(Ht_left,Ht_mid,Ht_right);
 WindowE = environments(Ψ,WindowH);
 
 MPSs = Vector{WindowMPS}(undef,div(number_of_timesteps,frequency_of_saving)+1)
+Es = Vector{Vector{ComplexF64}}(undef,div(number_of_timesteps,frequency_of_saving)+1)
 
 for n = 1:number_of_timesteps
     global t
@@ -141,10 +153,11 @@ for n = 1:number_of_timesteps
     t += dt
     println("Timestep n = $(n), t = $(t)")
 
-    Ψt,WindowE = timestep!(Ψt,WindowH,t,dt,alg,WindowE;leftevolve=true,rightevolve=false)
+    Ψt,WindowE = timestep!(Ψt,WindowH,t,dt,alg,WindowE;leftevolve=false,rightevolve=true)
 
     if (n % frequency_of_saving == 0)
         MPSs[div(n,frequency_of_saving)] = Ψt
+        Es[div(n,frequency_of_saving)] = expectation_value(Ψt.window, Ht_mid(t))
     end
 
     # E_values = expectation_value(Ψt.window, WindowH.middle(t))
@@ -177,4 +190,4 @@ for n = 1:number_of_timesteps
 
 end
 
-@save "window_time_evolution_v_sweep_mass_$(am_tilde_0)_delta_g_$(Delta_g)_ramping_$(RAMPING_TIME)_dt_$(dt)_vmax_$(v_max)_kappa_$(κ)_trunc_$(truncation)_savefrequency_$(frequency_of_saving)" MPSs
+@save "window_time_evolution_v_sweep_N_$(N)_mass_$(am_tilde_0)_delta_g_$(Delta_g)_ramping_$(RAMPING_TIME)_dt_$(dt)_nrsteps_$(number_of_timesteps)_vmax_$(v_max)_kappa_$(κ)_trunc_$(truncation)_savefrequency_$(frequency_of_saving)" MPSs Es

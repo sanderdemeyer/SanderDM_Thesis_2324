@@ -5,159 +5,105 @@ using TensorKit
 using MPSKitModels, TensorKit, MPSKit
 using Statistics
 using Plots
+using LaTeXStrings
 
-function gaussian_wave_packet(k, σ)
-    return exp(-((k%(2*pi))/(2*σ))^2)
-end
+include("get_thirring_hamiltonian_symmetric.jl")
 
-function _Pk_matrix(k, m, v)
-    # return (1.0, 0.0)
+function _c_matrix(k, m, v)
+    if (k < 0.0)
+        sign = -1.0
+    else
+        sign = 1.0
+    end
+
     if (m == 0.0 && v == 0.0)
-        a_help = -(1im/2)*(1-exp(im*k))
-        # λ = -abs(a_help)
-        a = conj(a_help)
-        b = abs(a_help)
-    else 
-        λ = (v/2)*sin(k) - sqrt(m^2 + (sin(k/2))^2)
-        a = (m+(v/2)*sin(k)) - λ
-        b = -(1im/2)*(1-exp(im*k))
+        c₊¹ = -1
+        c₊² = exp(-im*k/2)
+    else
+        λ = sign*sqrt(m^2+sin(k/2)^2)
+        a₊ = m - λ
+        b₊ = -exp(im*k/2)*sin(k/2)
+        c₊¹ = -b₊
+        c₊² = a₊
     end
-    norm = sqrt(abs(a)^2+abs(b)^2)
-    return (-b/norm, a/norm)
+    norm = sqrt(abs(c₊¹)^2 + abs(c₊²)^2)
+    return (c₊¹/norm, c₊²/norm)
 end
 
-function _integrand_wave_packet_occupation_number(k₁, k₂, ω, x₀, σ, m, v, corr::Matrix)
-    (c11, c21) = _Pk_matrix(k₁, m, v)
-    (c12, c22) = _Pk_matrix(k₂, m, v)
-    factor = gaussian_wave_packet(k₁-ω,σ)*gaussian_wave_packet(k₂-ω,σ)
+function gaussian(k, k₀, σ, x₀)
+    k = mod(k + pi, 2*pi) - pi
+    return exp(-im*k*x₀) * exp(-((k-k₀)/(2*σ))^2)
+    return (abs(k-k₀) < 1e-5)*1
+end
+
+function _integrand_wave_packet_occupation_number(k₀, x₀, σ, m, v, corr::Matrix)
     sum = 0
-    for m = 1:div(N,2)
-        for n = 1:div(N,2)
-            #=
-            # sum += exp(-1im*k₁*(2*n+x₀)+1im*k₂*(2*m+x₀)) * conj(c11)*c12 * corr[2*n,2*m]
-            sum += exp(-1im*k₁*(n+x₀)+1im*k₂*(m+x₀)) * conj(c11)*c12 * corr[2*n,2*m]
-            if 2*n+1 <= N
-                # sum += exp(-1im*k₁*(2*n+1+x₀)+1im*k₂*(2*m+x₀)) * conj(c21)*c12 * corr[2*n+1,2*m]
-                sum += exp(-1im*k₁*(n+x₀)+1im*k₂*(m+x₀)) * conj(c21)*c12 * corr[2*n+1,2*m]
-            end
-            if 2*m+1 <= N
-                # sum += exp(-1im*k₁*(2*n+x₀)+1im*k₂*(2*m+1+x₀)) * conj(c11)*c22 * corr[2*n,2*m+1]
-                sum += exp(-1im*k₁*(n+x₀)+1im*k₂*(m+x₀)) * conj(c11)*c22 * corr[2*n,2*m+1]
-            end
-            if (2*n+1 <= N) && (2*m+1 <= N)
-                # sum += exp(-1im*k₁*(2*n+1+x₀)+1im*k₂*(2*m+1+x₀)) * conj(c21)*c22 * corr[2*n+1,2*m+1]
-                sum += exp(-1im*k₁*(n+x₀)+1im*k₂*(m+x₀)) * conj(c21)*c22 * corr[2*n+1,2*m+1]
-            end
-            =#
-            if ((2*n+1 <= N) && (2*m+1 <= N))
-                sum += exp(-1im*k₁*(x₀-n)+1im*k₂*(x₀-m)) * conj(c11)*c12 * corr[2*n,2*m]
-                sum += exp(-1im*k₁*(x₀-n)+1im*k₂*(x₀-m)) * conj(c21)*c12 * corr[2*n+1,2*m]
-                sum += exp(-1im*k₁*(x₀-n)+1im*k₂*(x₀-m)) * conj(c11)*c22 * corr[2*n,2*m+1]
-                sum += exp(-1im*k₁*(x₀-n)+1im*k₂*(x₀-m)) * conj(c21)*c22 * corr[2*n+1,2*m+1]
+    for iₖ = 0:N-1
+        k₁ = (2*pi/N)*iₖ - pi
+        for jₖ = 0:N-1
+            k₂ = (2*pi/N)*jₖ - pi
+            (c¹₁, c²₁) = _c_matrix(k₁, m, v)
+            (c¹₂, c²₂) = _c_matrix(k₂, m, v)
+            for m = 0:N-1
+                for n = 0:N-1
+                    # factor = exp(im*k₀*(m-n))
+                    factor = exp(im*(-k₁*n+k₂*m)) * gaussian(k₁, k₀, σ, x₀) * conj(gaussian(k₂, k₀, σ, x₀))
+                    sum += factor * c¹₁ * conj(c¹₂) * corr[1+2*n,1+2*m]
+                    sum += factor * c²₁ * conj(c¹₂) * corr[1+2*n+1,1+2*m]
+                    sum += factor * c¹₁ * conj(c²₂) * corr[1+2*n,1+2*m+1]
+                    sum += factor * c²₁ * conj(c²₂) * corr[1+2*n+1,1+2*m+1]
+                end
             end
         end
     end
-    return factor*sum
+    return sum/N
 end
 
-function wave_packet_occupation_number(ω, x₀, σ, m, v, corr::Matrix)
-    dk = 2*pi/N
-    occupation_number = 0
-    for i₁ = 0:N-1
-        for i₂ = 0:N-1
-            # println("started for k1 = $(i₁) and k2 = $(i₂)")
-            occupation_number += _integrand_wave_packet_occupation_number(dk*i₁, dk*i₂, ω, x₀, σ, m, v, corr)
+
+
+function wave_packet_occupation_number(k₀, x₀, σ, m, v, corr::Matrix, corr_energy::Matrix)
+    occupation_number = _integrand_wave_packet_occupation_number(k₀, x₀, σ, m, v, corr)
+    energy = _integrand_wave_packet_occupation_number(k₀, x₀, σ, m, v, corr_energy)
+    return (occupation_number, energy)
+end
+
+function get_occupation_number(mps, N, m, v)
+    @load "everything_needed" S⁺ S⁻ S_z_symm
+    x₀ = 5
+    σ = 10/N
+    
+    corr = zeros(ComplexF64, 2*N, 2*N)
+    corr_energy = zeros(ComplexF64, 2*N, 2*N)
+    corr_energy_check = zeros(ComplexF64, 2*N, 2*N)
+
+    for i = 2:2*N+1
+        println("i = $(i)")
+        corr_bigger = correlator(mps, S⁺, S⁻, S_z_symm, i, 2*N+2)
+        # corr_energy_bigger = correlator(mps, S⁺, S⁻, S_z_symm, H, i, 2*N+2)
+        # corr_energy_check_bigger = correlator(mps, S⁺, S⁻, S_z_symm, unit_MPO, i, 2*N+2)
+        corr[i-1,:] = corr_bigger[2:2*N+1]
+        # corr_energy[i-1,:] = corr_energy_bigger[2:2*N+1]
+        # corr_energy_check[i-1,:] = corr_energy_check_bigger[2:2*N+1]
+    end
+
+    for i = 1:2*N
+        for j = 1:i-1
+            corr_energy[i,j] = conj(corr_energy[j,i])
+            corr_energy_check[i,j] = conj(corr_energy_check[j,i])
         end
     end
-    return occupation_number
+
+    X = [(2*pi)/N*i - pi for i = 0:N-1]
+    N̂ = zeros(Float64, N)
+    Ê = zeros(Float64, N)
+
+    for (index, k₀) in enumerate(X)
+        (occ,e) = wave_packet_occupation_number(k₀, x₀, σ, m, v, corr, corr_energy)
+        println("occ for k0 = $(k₀) is $(occ)")
+        println("energy for k0 = $(k₀) is $(e)")
+        N̂[index] = real(occ)
+        Ê[index] = real(e)
+    end
+
+    return (X, N̂, Ê)
 end
-
-
-@load "SanderDM_Thesis_2324/gs_mps_trunc_2.5_mass_0.0_v_0.0_Delta_g_0.0" mps
-
-
-spin = 1//2
-pspace = U1Space(i => 1 for i in (-spin):spin)
-S_z_symm = TensorMap([0.5+0.0im 0.0+0.0im; 0.0+0.0im -0.5+0.0im], pspace, pspace)
-H = @mpoham sum((S_z_symm){i} for i in vertices(InfiniteChain(2)))
-Plus_space = U1Space(1 => 1)
-Triv_space = U1Space(0 => 1)
-S⁺ = TensorMap([0.0+0.0im 1.0+0.0im; 0.0+0.0im 0.0+0.0im], Triv_space ⊗ pspace, pspace ⊗ Plus_space)
-S⁻ = TensorMap([0.0+0.0im 0.0+0.0im; 1.0+0.0im 0.0+0.0im], Plus_space ⊗ pspace, pspace ⊗ Triv_space)
-S_z_symm = TensorMap([0.5+0.0im 0.0+0.0im; 0.0+0.0im -0.5+0.0im], Triv_space ⊗ pspace, pspace ⊗ Triv_space)
-
-
-S_z_symm = TensorMap([0.5+0.0im 0.0+0.0im; 0.0+0.0im -0.5+0.0im], pspace, pspace)
-unit_tensor = TensorMap([1.0+0.0im 0.0+0.0im; 0.0+0.0im 1.0+0.0im], pspace, pspace)
-
-U = Tensor(ones, pspace)
-
-println(U)
-
-N = 100
-
-corr = zeros(ComplexF64, N, N)
-
-for i = 1:N
-    corr[i,:] = correlator(mps, S⁺, S⁻, S_z_symm, i, N)
-    # change unit_tensor to (-2im*S_z_symm)
-end
-
-println(typeof(corr))
-println(corr)
-
-N = 100
-x₀ = 50
-σ = 10/N
-m = 0.0
-v = 0.0
-
-k_max = pi
-data_points = 71
-
-X = range(-k_max, k_max, data_points)
-Y = zeros(Float64, data_points)
-ωs = zeros(Float64, data_points)
-ωs2 = zeros(Float64, data_points)
-
-for (index, k₀) in enumerate(X)
-    occ = wave_packet_occupation_number(k₀, x₀, σ, m, v, corr)
-    println("occ for k0 = $(k₀) is $(occ)")
-    Y[index] = real(occ)
-    ωs[index] = v*sin(k₀)/2 + sqrt(m^2 + (sin(k₀/2))^2)
-    ωs2[index] = v*sin(2*k₀)/2 + sqrt(m^2 + (sin(k₀))^2)
-    # occ2 = wave_packet_occupation_number(-5.0, 5, 0.1, 0.4, 0.0, corr)
-end
-# println("occ positive is $(occ)")
-# # println("occ2 negative is $(occ2)")
-# println(typeof(occ))
-# # println(correlator(gs_mps, S⁺, S⁻, 3, 4:7))
-
-@save "test_newww" X Y ωs ωs2
-
-plt = plot(X, Y)
-title!("Plot 1")
-display(plt)
-plot(ωs, Y)
-title!("Plot 2")
-display(plt)
-plot(ωs2, Y)
-title!("Plot 3")
-display(plt)
-# println(TransferMatrix(gs_mps.AR[1], S⁺, gs_mps.AR[1]))
-# println(TransferMatrix(gs_mps.AR[1:2], fill(S_z_symm,2), gs_mps.AR[1:2]))
-
-# println(gs_mps.AR[1])
-# println(gs_mps.AR[2])
-# println(S_z_symm)
-
-
-# println(typeof(TransferMatrix(gs_mps.AR[1], S⁺, gs_mps.AR[1])))
-# println(typeof(TransferMatrix(gs_mps.AR[1:2])))
-
-# println(typeof(S⁺))
-# println(correlator(gs_mps, S⁺, S⁻, 1, 2:5))
-# println(correlator(gs_mps, S⁺, S⁻, S_z_symm, 1, 2:5))
-
-
-# println(TransferMatrix(gs_mps.AC[1]))
