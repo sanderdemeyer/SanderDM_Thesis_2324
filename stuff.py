@@ -1,5 +1,49 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import scipy.optimize as opt
+
+def linear(x, a, b):
+    return a*x+b
+
+def fermi_dirac(x, kappa):
+    return 1/(1+np.exp(2*np.pi*x/kappa))
+
+# kappa = 0.1
+# X = np.linspace(-0.15,0.15,1000)
+# plt.plot(X, [fermi_dirac(i,kappa) for i in X])
+# plt.show()
+
+frequency_of_saving = 5
+dt = 0.01
+
+Y = np.array([122.5, 123, 139.3, 144.2, 158.8, 165.4, 177.4, 184.4, 195.5])*frequency_of_saving*dt
+X = [47-(34-i) for i in range(len(Y))]
+X = [34-i for i in range(len(Y))]
+
+popt, pcov = opt.curve_fit(linear, X, Y)
+
+X_more = np.linspace(min(X), max(X), 1000)
+Y_more = popt[0]*X_more+popt[1]
+
+print(f"slope = {popt[0]}")
+print(f"starting point = {popt[1]}")
+
+plt.xlabel('Position')
+plt.ylabel('Time of first wave arrival')
+#(i - N*2//3)*popt[0]
+N = 70
+plt.plot(X, [(N*2//3 - i)*(0.5) for i in X], label = r'expected for $c = 1$')
+plt.plot(X,Y, label = 'data')
+plt.plot(X_more, Y_more, label = 'fit')
+plt.legend()
+plt.show()
+
+
+
+
+
+print(a)
+
 
 def spatial_ramping_S(i, i_middle, k):
     return 1 - 1/(1+np.exp(2*k*(i-i_middle)))

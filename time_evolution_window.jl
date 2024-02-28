@@ -1,6 +1,6 @@
 using LinearAlgebra
 # using Base
-using KrylovKit
+# using KrylovKit
 using JLD2
 using TensorKit
 using MPSKitModels, TensorKit, MPSKit
@@ -80,7 +80,7 @@ truncation = 1.5
 (Hopping_term, Mass_term, Interaction_term, Interaction_v_term, Interaction_v_term_window, Mass_term_window) = get_thirring_hamiltonian_window(1.0, 1.0, 1.0, N, lijst_ramping)
 H_without_v = Hopping_term + am_tilde_0*Mass_term + Delta_g*Interaction_term
 
-(gs_mps, gs_envs) = get_groundstate(am_tilde_0, Delta_g, v, [5 10], truncation, 8.0; number_of_loops=4)
+(gs_mps, gs_envs) = get_groundstate(am_tilde_0, Delta_g, v, [5 10], truncation, 8.0; number_of_loops=1)
 
 Ψ = WindowMPS(gs_mps,N); # state is a windowMPS
 
@@ -134,8 +134,6 @@ alg       = TDVP()
 
 frequency_of_saving = 1
 
-break
-
 Ht_right = H_without_v + TimedOperator(Interaction_v_term, f)
 Ht_mid = repeat(H_without_v,div(N,2)) + TimedOperator(Interaction_v_term_window,f)
 Ht_left = H_without_v + TimedOperator(Interaction_v_term,f0)
@@ -187,7 +185,6 @@ for n = 1:number_of_timesteps
     #     true_gs_energy = expectation_value(groundstate_mps_local.window, Ht_mid)
     #     gs_energies[div(n,frequency_of_VUMPS)] = true_gs_energy
     # end
-
 end
 
 @save "window_time_evolution_v_sweep_N_$(N)_mass_$(am_tilde_0)_delta_g_$(Delta_g)_ramping_$(RAMPING_TIME)_dt_$(dt)_nrsteps_$(number_of_timesteps)_vmax_$(v_max)_kappa_$(κ)_trunc_$(truncation)_savefrequency_$(frequency_of_saving)" MPSs Es

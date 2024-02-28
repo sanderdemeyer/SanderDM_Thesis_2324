@@ -86,8 +86,8 @@ function _c_matrix(k, m, v)
 end
 
 function gaussian(k, k₀, σ, x₀)
-    k = mod(k + pi, 2*pi) - pi
-    return exp(-im*k*x₀) * exp(-((k-k₀)/(2*σ))^2)
+    # k = mod(k + pi, 2*pi) - pi
+    return exp(-im*k*x₀) * exp(-((k-k₀)/(2*σ))^2)/2
     return (abs(k-k₀) < 1e-5)*1
 end
 
@@ -237,6 +237,8 @@ unit_right = TensorMap([1.0+0.0im 0.0+0.0im; 0.0+0.0im 1.0+0.0im], conj(space(ri
 
 @load "everything_needed" N mps S⁺ S⁻ S_z_symm H
 
+break
+
 # tensors = [i%2 == 0 ? mps.AR[2] : mps.AR[1] for i in 1:N]
 # tensors[1] = mps.AC[1]
 
@@ -266,15 +268,21 @@ corr_energy_check = zeros(ComplexF64, 2*N, 2*N)
 #     corr_check[i-1,:] = corr_bigger[2:2*N+1]
 # end
 
+println("started with correlation")
+
+corr_energy_check = correlator(mps, S⁺, S⁻, S_z_symm, unit_MPO, 2*N+2)
+
+break
+
 
 for i = 2:2*N+1
     println("i = $(i)")
     corr_bigger = correlator(mps, S⁺, S⁻, S_z_symm, i, 2*N+2)
-    # corr_energy_bigger = correlator(mps, S⁺, S⁻, S_z_symm, H, i, 2*N+2)
-    # corr_energy_check_bigger = correlator(mps, S⁺, S⁻, S_z_symm, unit_MPO, i, 2*N+2)
+    corr_energy_bigger = correlator(mps, S⁺, S⁻, S_z_symm, H, i, 2*N+2)
+    corr_energy_check_bigger = correlator(mps, S⁺, S⁻, S_z_symm, unit_MPO, i, 2*N+2)
     corr[i-1,:] = corr_bigger[2:2*N+1]
-    # corr_energy[i-1,:] = corr_energy_bigger[2:2*N+1]
-    # corr_energy_check[i-1,:] = corr_energy_check_bigger[2:2*N+1]
+    corr_energy[i-1,:] = corr_energy_bigger[2:2*N+1]
+    corr_energy_check[i-1,:] = corr_energy_check_bigger[2:2*N+1]
 
     # corr_energy[i,:] = correlator(mps, S⁺, S⁻, H_with_S_z_symm, i, N)
     # change unit_tensor to (-2im*S_z_symm)
@@ -380,3 +388,98 @@ title!("title")
 display(plt)
 
 
+break
+
+##
+
+state = mps
+envs = environments(state, H)
+left_env = leftenv(envs, i, state)
+right_env = rightenv(envs, i, state)
+
+transf = TransferMatrix(mps.AC[i], H[i], mps.AC[i])
+transf2 = TransferMatrix(mps.AC[i-1], H[i-1], mps.AC[i-1])
+
+left_env * (transf * right_env)
+
+println(typeof(left_env)) # = PeriodicArray, 2, 1
+println(typeof(right_env)) # PeriodicArray, 2, 1
+println(typeof(transf)) # SingleTransferMatrix, 2, 1
+println(typeof(left_env * transf)) # PeriodicArray, 2, 1
+println(typeof(transf * right_env)) # PeriodicArray, 2, 1
+
+test_right = transf2 * (transf * right_env)
+
+for (j,k) in keys(H[i])
+    println("j = $(j), k = $(k)")
+    V = @tensor left_env[j][1 2; 3] * test_right[j][3 2; 1]
+end
+
+
+for (j,k) in keys(H[i])
+    left_env = leftenv(envs, i, state)
+    right_env = rightenv(envs, i+1, state)
+    V = @tensor left_env[j][1 2; 3] * (TransferMatrix(mps.AC[i], H[i], mps.AC[i]) * TransferMatrix(mps.AC[i+1], H[i+1], mps.AC[i+1]) * right_env)[j][3 2; 1]
+end
+
+left_env = leftenv(envs, i, state)
+tra = TransferMatrix(mps.AC[i], H[i], mps.AC[i])
+
+# @tensor W[-1 -2; -3] := left_env[1 2; 3] * tra[1 2 3; -1 -2 -3] 
+
+left_env = leftenv(envs, i, state)
+
+@tensor new_left[-1 -2; -3] := left_env[5 3; 1] * mps.AC[i][1 2; -3] * H[i][3 4; 2 -2] * conj(mps.AC[i][5 4; -1])
+
+
+for (j,k) in keys(H[i])
+    tra = TransferMatrix(mps.AC[i+1], H[i+1], mps.AC[i+1])
+    @tensor new_left[-1 -2; -3] := left_env[j][5 3; 1] * mps.AC[i][1 2; -3] * H[i][j,k][3 4; 2 -2] * conj(mps.AC[i][5 4; -1])
+    new_left * tra
+end
+
+O₁ = S⁺
+U_space₁ = Tensor(ones, space(O₁)[1])
+
+@plansor AO[-1 -2; -3 -4] := mps.AC[i][-1 1; -4] * O₁[2 -2; 1 -3] * conj(U_space₁[2])
+
+tra = TransferMatrix(mps.AC[i+1], H[i+1], mps.AC[i+1])
+
+for (j,k) in keys(H[i])
+    for (a,b) in keys(H[i+1])
+        if (k == a)
+            println("yes")
+            @tensor new[-1 -2 -3; -4 -5 -6] :=  mps.AC[i][-3 1; 2] * H[i][j,k][-2 5; 1 3] * conj(mps.AC[i][-1 5; 6]) * tra.above[2 4; -4] * tra.middle[a,b][3 7; 4 -5] * conj(tra.below[6 7; -6])
+        end
+    end
+end
+
+sites = 2
+
+O₁ = S⁺
+O₂ = S⁻
+U_space₁ = Tensor(ones, space(O₁)[1])
+U_space₂ = Tensor(ones, space(O₂)[4])
+
+left_env = leftenv(envs, i, state)
+right_env = rightenv(envs, i+sites, state)
+tra = TransferMatrix(mps.AR[i+1], H[i+1], mps.AR[i+1])
+
+for (j₁, k₁) in keys(H[i])
+    for (j₂, k₂) in keys(tra.middle)
+        if (k₁ == j₂)
+            for (j₃, k₃) in keys(H[i+sites])
+                if (k₂ == j₃)
+                    println("jow")
+                    G = @tensor left_env[j₁][6 5; 1] * mps.AC[i][1 2; 8] * O₁[3 4; 2 18] * conj(U_space₁[3]) * H[i][j₁,k₁][5 7; 4 10] * conj(mps.AC[i][6 7; 11]) * tra.above[8 9; 13] * tra.middle[j₂,k₂][10 12; 9 15] * conj(tra.below[11 12; 19]) * mps.AR[i+sites][13 14; 23] * H[i+sites][j₃,k₃][15 16; 14 22] * O₂[18 20; 16 17] * conj(U_space₂[17]) * conj(mps.AR[i+sites][19 20; 21]) * right_env[k₃][23 22; 21]
+                end
+            end
+        end
+    end
+end
+
+
+tra = TransferMatrix(mps.AC[i+1], H[i+1], mps.AC[i+1])
+for (j,k) in keys(tra.middle)
+    println("j = $(j), k = $(k)")
+end

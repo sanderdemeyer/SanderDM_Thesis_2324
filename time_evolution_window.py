@@ -6,22 +6,25 @@ import scipy.optimize
 from sklearn.metrics import r2_score
 import csv
 from matplotlib.animation import FuncAnimation
+from scipy.signal import argrelextrema
+import scipy.optimize as opt
 
-N = 20
+N = 70
 am_tilde_0 = 1.0
 Delta_g = 0.0
 RAMPING_TIME = 5
-dt = 0.1
-v_max = 2.0
+dt = 0.01
+v_max = 1.5
 spatial_sweep = 10
 truncation = 1.5
-nr_steps = 1
-kappa = 1.0
-frequency_of_saving = 1
+nr_steps = 1500
+kappa = 0.6
+frequency_of_saving = 5
 
 file = f"window_time_evolution_mass_{am_tilde_0}_delta_g_{Delta_g}_ramping_{RAMPING_TIME}_dt_{dt}_vmax_{v_max}_spatialsweep_{spatial_sweep}_trunc_{truncation}"
 file = f"window_time_evolution_mass_sweep_mass_{am_tilde_0}_delta_g_{Delta_g}_ramping_{RAMPING_TIME}_dt_{dt}_vmax_{v_max}_spatialsweep_{spatial_sweep}_trunc_{truncation}"
-file = f"window_time_evolution_v_sweep_N_{N}_mass_{am_tilde_0}_delta_g_{Delta_g}_ramping_{RAMPING_TIME}_dt_{dt}_vmax_{v_max}_kappa_{kappa}_trunc_{truncation}_savefrequency_{frequency_of_saving}"
+file = f"SanderDM_Thesis_2324/window_time_evolution_v_sweep_N_{N}_mass_{am_tilde_0}_delta_g_{Delta_g}_ramping_{RAMPING_TIME}_dt_{dt}_nrsteps_{nr_steps}_vmax_{v_max}_kappa_{kappa}_trunc_{truncation}_savefrequency_{frequency_of_saving}"
+file = f"SanderDM_Thesis_2324/window_time_evolution_v_sweep_N_{N}_mass_{am_tilde_0}_delta_g_{Delta_g}_ramping_{RAMPING_TIME}_dt_{dt}_nrsteps_{nr_steps}_vmax_{v_max}_kappa_{kappa}_trunc_{truncation}_savefrequency_{frequency_of_saving}"
 f = h5py.File(file)
 
 
@@ -48,13 +51,59 @@ Es_average = [[Es[n_t]] for n_t in range(timesteps)]
 
 Es_average = [[(Es[n_t][2*j] + Es[n_t][2*j+1])/2 for j in range(1,N//2-1)] for n_t in range(timesteps)]
 
+dilution = 1
 if True:
-    for n_t in range(timesteps):
-        plt.plot([f'{2*j+1}&{2*j+2}' for j in range(1,N//2-1)], Es_average[n_t], label = f'n_t = {n_t}')
+    for n_t in range(timesteps//dilution):
+        plt.plot([f'{2*j+1}&{2*j+2}' for j in range(1,N//2-1)], Es_average[n_t*dilution], label = f'n_t = {n_t}')
 
 plt.legend()
 plt.title(f't = {n_t*dt}')
 plt.show()
+
+wave_arrivals = np.zeros(N)
+plot = False
+
+for position in range(N):
+    wave = np.array([Es[n_t][position] for n_t in range(timesteps)])
+    maxima = argrelextrema(wave, np.less)
+    print(maxima)
+    if len(maxima[0] > 0):
+        print(maxima[0][0])
+        wave_arrivals[position] = maxima[0][0]
+
+    if plot:
+        plt.plot(range(timesteps), wave)
+        plt.title(f'For i = {position}')
+        plt.show()
+
+
+start = 33
+end = 42
+
+plt.plot(range(N), wave_arrivals)
+plt.xlabel('Position')
+plt.ylabel('Time of first wave arrival')
+plt.show()
+
+def linear(x, a, b):
+    return a*x+b
+
+popt, pcov = opt.curve_fit(linear, range(start,end+1), wave_arrivals[start:end+1]*frequency_of_saving*dt)
+
+print(f"slope = {popt[0]}")
+print(f"starting point = {popt[1]}")
+print(f'Renormalization to c = {popt[0]*2}')
+
+print(wave_arrivals)
+plt.plot(range(start,end+1), wave_arrivals[start:end+1]*frequency_of_saving*dt)
+plt.plot(range(start,end+1), [(i - N*2//3)*popt[0] for i in range(start,end+1)], label = fr'Expected for $c = {-round(popt[0]*2,3)}$')
+plt.xlabel('Position')
+plt.ylabel('Time of first wave arrival')
+plt.legend()
+plt.title('Renormalization of c by means of first wave arrival')
+plt.show()
+
+print(a)
 
 
 # Set x and y range for all figures
