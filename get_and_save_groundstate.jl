@@ -7,7 +7,7 @@ using MPSKitModels, TensorKit, MPSKit
 include("get_groundstate.jl")
 
 trunc = 2.5
-mass = 1.0
+mass = 0.3
 v = 0.0
 Delta_g = 0.0
 

@@ -10,7 +10,7 @@ using LaTeXStrings
 include("get_occupation_number.jl")
 
 Nₗ = 100
-m = 0.0
+m = 1.0
 Delta_g = 0.0
 RAMPING_TIME = 5
 dt = 0.01
@@ -28,10 +28,33 @@ frequency_of_saving = 5
 dilution = 30
 occupation_numbers = Vector{Vector{ComplexF64}}(undef,div(nr_steps,frequency_of_saving*dilution))
 
+
+datapoints = 200
+occupation_numbers_check = Vector{Vector{ComplexF64}}(undef,datapoints)
+
 N = div(Nₗ,2)-1
 X = [(2*pi)/N*i - pi for i = 0:N-1]
 
-occ_gs = get_occupation_number(mps, Nₗ, m, 0.0; σ = 1e-3, x₀ = 15)
+
+# occ_gs = get_occupation_number(mps, Nₗ, m, 0.0; σ = 1e-3, x₀ = 15, fasefactor=exp(im*5.0))
+# plt = plot(X, occ_gs, xlabel = "k")
+# title!("Occupation number for N = $(N)")
+# display(plt)
+
+# break
+
+for iₖ = 0:datapoints-1
+    println("i_k = $(iₖ)")
+    k_phase = iₖ*2*pi/datapoints
+    fasefactor_here = exp(im*k_phase)
+    occ_gs = get_occupation_number(mps, Nₗ, m, 0.0; σ = 1e-3, x₀ = 15, fasefactor=k_phase)
+    occ_gs = [real(i) for i in occ_gs]
+    occupation_numbers_check[iₖ+1] = occ_gs
+end
+
+break
+
+occ_gs = get_occupation_number(mps, Nₗ, m, 0.0; σ = 1e-3, x₀ = 15, fasefactor=1.0)
 plt = plot(X, occ_gs, xlabel = "k")
 title!("Occupation number for N = $(N)")
 display(plt)

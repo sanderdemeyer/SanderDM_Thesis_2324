@@ -34,10 +34,37 @@ function _c_matrix(k, m, v, fasefactor)
         # c₊² = exp(-im*k/2)
         
     end
-    # fasefactor = exp(im*rand()*pi*0)
+    # fasefactor = exp(im*rand()*pi*2)
+    print("here")
     norm = sqrt(abs(c₊¹)^2 + abs(c₊²)^2)
     return (c₊¹/norm*fasefactor, c₊²/norm*fasefactor)
 end
+
+
+function _c_matrix(k, m, v; fasefactor = 1.0)
+    if (k < 0.0)
+        sign = -1.0
+    else
+        sign = 1.0
+    end
+
+    if (m == 0.0 && v == 0.0)
+        c₊¹ = -1
+        c₊² = exp(-im*k/2)
+    else
+        if (k == 0.0)
+            k = 1e-10
+        end
+        λ = sign*sqrt(m^2+sin(k/2)^2)
+        c₊¹ = -1
+        c₊² = -exp(-im*k/2)*(m-λ)/sin(k/2)
+        
+    end
+    norm = sqrt(abs(c₊¹)^2 + abs(c₊²)^2)
+    return (c₊¹/norm*fasefactor, c₊²/norm*fasefactor)
+end
+
+
 
 function gaussian(k, k₀, σ, x₀)
     k = mod(k + pi, 2*pi) - pi
@@ -66,13 +93,17 @@ function _integrand_wave_packet_occupation_number(k₀, x₀, σ, m, v, corr::Ma
     return sum/N
 end
 
-function _integrand_wave_packet_occupation_number_dirac_delta(k₀, x₀, σ, m, v, corr::Matrix)
+function _integrand_wave_packet_occupation_number_dirac_delta(k₀, x₀, σ, mass, v, corr::Matrix, fasefactor)
     sum = 0
-    (c¹₁, c²₁) = _c_matrix(k₀, m, v)
-    (c¹₂, c²₂) = _c_matrix(k₀, m, v)
+    # fasefactor = exp(im*rand()*pi*2)
+    (c¹₁, c²₁) = _c_matrix(k₀, mass, v, 1.0)
+    (c¹₂, c²₂) = _c_matrix(k₀, mass, v, 1.0)
     for m = 0:N-1
         for n = 0:N-1
             factor = exp(im*(-k₀*n+k₀*m))
+            # factor = exp(im*(m-n)*fasefactor)
+            # factor = exp(-im*(-k₀*n+k₀*m))
+            # factor = 1.0
             sum += factor * c¹₁ * conj(c¹₂) * corr[1+2*n,1+2*m]
             sum += factor * c²₁ * conj(c¹₂) * corr[1+2*n+1,1+2*m]
             sum += factor * c¹₁ * conj(c²₂) * corr[1+2*n,1+2*m+1]
@@ -82,7 +113,7 @@ function _integrand_wave_packet_occupation_number_dirac_delta(k₀, x₀, σ, m,
     return sum/N
 end
 
-function get_occupation_number(mps, N₂, m, v; σ = 10/(div(N₂,2)-1), x₀ = div(div(N₂,2)-1,2))
+function get_occupation_number(mps, N₂, m, v; σ = 10/(div(N₂,2)-1), x₀ = div(div(N₂,2)-1,2), fasefactor = 1.0)
     N = div(N₂,2)-1
     println("N = $(N), sigma = $(σ), x_0 = $(x₀)")
     @load "operators_for_occupation_number" S⁺ S⁻ S_z_symm
@@ -97,7 +128,7 @@ function get_occupation_number(mps, N₂, m, v; σ = 10/(div(N₂,2)-1), x₀ = 
     
     for (index, k₀) in enumerate(X)
         # occ = _integrand_wave_packet_occupation_number(k₀, x₀, σ, m, v, corr)
-        occ = _integrand_wave_packet_occupation_number_dirac_delta(k₀, x₀, σ, m, v, corr)
+        occ = _integrand_wave_packet_occupation_number_dirac_delta(k₀, x₀, σ, m, v, corr, fasefactor)
         N̂[index] = real(occ)
     end
     return N̂

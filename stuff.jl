@@ -9,10 +9,53 @@ using Base
 using JLD2
 # using MPSKitModels, TensorKit, MPSKit
 using Statistics
-
+using Plots
 include("get_groundstate_energy.jl")
 include("get_thirring_hamiltonian.jl")
 include("get_thirring_hamiltonian_symmetric.jl")
+
+x = 1:10
+y1 = rand(10)
+y2 = rand(10)
+plt = plot(x, y1, label="Plot 1", xlabel="X-axis", ylabel="Y-axis", linewidth=2)
+plot!(x, y2, label="Plot 2", linestyle=:dash, linewidth=2)
+display(plt)
+
+break
+
+function M_H(m, v, k)
+    return [m + (v/2)*sin(k) -(im/2)*(1-exp(im*k)) ; (im/2)*(1-exp(-im*k)) -m+(v/2)*sin(k)]
+end
+
+function P_H(m, v, k)
+    λ = sqrt(m^2+sin(k/2)^2)
+    # c₊¹ = -1
+    # c₊² = -exp(-im*k/2)*(m-λ)/sin(k/2)
+    return [-1 -1; -exp(-im*k/2)*(m-λ)/sin(k/2) -exp(-im*k/2)*(m+λ)/sin(k/2)]
+end
+
+A = [1 1; 1 -1]
+P = [1 -1; sqrt(2)-1 sqrt(2)+1]
+
+println(A)
+println(P)
+
+for i = 2:15
+    println(norm(MPSs[i].window.AC[1]-MPSs[i-1].window.AC[1]))
+end
+
+for i = 2:15
+    println(norm(WindowMPSs[i].AC[1]-WindowMPSs[i-1].AC[1]))
+end
+
+i = 2
+N = 7
+X = [(2*pi)/N*i - pi for i = 0:N-1]
+plt = plot(X, occ_numbers[i,:], xlabel = "k")
+title!("Occupation number for N = $(N)")
+display(plt)
+
+
 
 testt = 0.0
 

@@ -12,7 +12,7 @@ using Statistics
 include("get_thirring_hamiltonian_symmetric_separate.jl")
 include("get_thirring_hamiltonian_window.jl")
 include("get_groundstate.jl")
-
+include("get_occupation_number_matrices.jl")
 
 function spatial_ramping_lin(i, i_start, i_end)
     if i < i_start
@@ -51,7 +51,7 @@ end
 #     push!(energies, expectation_value(Ψ.window, H.middle(t)))
 # end
 
-N = 20 # Number of sites
+N = 16 # Number of sites
 
 @assert N % 2 == 0
 
@@ -61,8 +61,8 @@ lijst_ramping = [spatial_ramping_S(i, i_b, κ) for i in 1:N]
 
 # spatial_sweep = i_end-i_start
 
-dt = 0.1
-max_time_steps = 150 #3000 #7000
+dt = 1.0
+max_time_steps = 15 #3000 #7000
 t_end = dt*max_time_steps
 
 am_tilde_0 = 1.0
@@ -129,6 +129,9 @@ number_of_timesteps = max_time_steps
 alg       = TDVP()
 Ψt = copy(Ψ)
 
+σ = 2*(2*pi/L)
+x₀ = L-5
+
 # energies = zeros(ComplexF64, (N, number_of_timesteps))
 # gs_energies = zeros(ComplexF64, (N, div(number_of_timesteps,frequency_of_VUMPS)+1))
 
@@ -142,7 +145,11 @@ WindowH = Window(Ht_left,Ht_mid,Ht_right);
 WindowE = environments(Ψ,WindowH);
 
 MPSs = Vector{WindowMPS}(undef,div(number_of_timesteps,frequency_of_saving)+1)
-Es = Vector{Vector{ComplexF64}}(undef,div(number_of_timesteps,frequency_of_saving)+1)
+WindowMPSs = Vector{FiniteMPS}(undef,div(number_of_timesteps,frequency_of_saving)+1)
+# Es = Vector{Vector{ComplexF64}}(undef,div(number_of_timesteps,frequency_of_saving))
+# occ_numbers = Vector{Vector{Float64}}(undef,div(number_of_timesteps,frequency_of_saving))
+Es = zeros(ComplexF64, div(number_of_timesteps,frequency_of_saving), N)
+occ_numbers = zeros(Float64,div(number_of_timesteps,frequency_of_saving), div(N,2)-1)
 
 for n = 1:number_of_timesteps
     global t
@@ -154,8 +161,11 @@ for n = 1:number_of_timesteps
     Ψt,WindowE = timestep!(Ψt,WindowH,t,dt,alg,WindowE;leftevolve=false,rightevolve=true)
 
     if (n % frequency_of_saving == 0)
+        println("difference with starting point is $(norm(Ψt.window.AC[1]-Ψ.window.AC[1]))")
         MPSs[div(n,frequency_of_saving)] = Ψt
-        Es[div(n,frequency_of_saving)] = expectation_value(Ψt.window, Ht_mid(t))
+        WindowMPSs[div(n,frequency_of_saving)] = Ψt.window
+        occ_numbers[div(n,frequency_of_saving),:] = get_occupation_number_matrices(Ψt.window, N, m, σ, x₀)
+        Es[div(n,frequency_of_saving),:] = expectation_value(Ψt.window, Ht_mid(t))
     end
 
     # E_values = expectation_value(Ψt.window, WindowH.middle(t))
@@ -187,4 +197,4 @@ for n = 1:number_of_timesteps
     # end
 end
 
-@save "window_time_evolution_v_sweep_N_$(N)_mass_$(am_tilde_0)_delta_g_$(Delta_g)_ramping_$(RAMPING_TIME)_dt_$(dt)_nrsteps_$(number_of_timesteps)_vmax_$(v_max)_kappa_$(κ)_trunc_$(truncation)_savefrequency_$(frequency_of_saving)" MPSs Es
+@save "window_time_evolution_test_v_sweep_N_$(N)_mass_$(am_tilde_0)_delta_g_$(Delta_g)_ramping_$(RAMPING_TIME)_dt_$(dt)_nrsteps_$(number_of_timesteps)_vmax_$(v_max)_kappa_$(κ)_trunc_$(truncation)_savefrequency_$(frequency_of_saving)" MPSs Es
