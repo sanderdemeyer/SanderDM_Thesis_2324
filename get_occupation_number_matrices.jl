@@ -1,12 +1,8 @@
 using LinearAlgebra
-using KrylovKit
+# using KrylovKit
 using JLD2
 using TensorKit
 using MPSKitModels, TensorKit, MPSKit
-using Statistics
-using Plots
-using LaTeXStrings
-using Random
 
 include("get_thirring_hamiltonian_symmetric.jl")
 

@@ -86,6 +86,13 @@ end
 plt = plot(X, [real(occupation_numbers[1][i]) for i = 1:N], xlabel = "k")
 title!("Occupation number for N = $(N)")
 display(plt)
+plot(x, y1, label="Plot 1", xlabel="X-axis", ylabel="Y-axis", linewidth=2)
+
+# Overlay the second plot on the first one
+plot!(x, y2, label="Plot 2", linestyle=:dash, linewidth=2)
+
+# Show the plot
+display(plt)
 
 
 # plt = plot(X, occ_plus, xlabel = "k", ylabel = L"$\left<\hat{N}\right>$")

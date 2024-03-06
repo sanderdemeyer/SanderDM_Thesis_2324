@@ -62,7 +62,7 @@ lijst_ramping = [spatial_ramping_S(i, i_b, κ) for i in 1:N]
 # spatial_sweep = i_end-i_start
 
 dt = 1.0
-max_time_steps = 15 #3000 #7000
+max_time_steps = 10 #3000 #7000
 t_end = dt*max_time_steps
 
 am_tilde_0 = 1.0
@@ -129,8 +129,8 @@ number_of_timesteps = max_time_steps
 alg       = TDVP()
 Ψt = copy(Ψ)
 
-σ = 2*(2*pi/L)
-x₀ = L-5
+σ = 2*(2*pi/N)
+x₀ = 40
 
 # energies = zeros(ComplexF64, (N, number_of_timesteps))
 # gs_energies = zeros(ComplexF64, (N, div(number_of_timesteps,frequency_of_VUMPS)+1))
@@ -140,6 +140,9 @@ frequency_of_saving = 1
 Ht_right = H_without_v + TimedOperator(Interaction_v_term, f)
 Ht_mid = repeat(H_without_v,div(N,2)) + TimedOperator(Interaction_v_term_window,f)
 Ht_left = H_without_v + TimedOperator(Interaction_v_term,f0)
+#MPO ham voor finite deel, altijd infinite lattice. 
+#window van multipliedoperator
+LazySum([Window(, )])
 
 WindowH = Window(Ht_left,Ht_mid,Ht_right);
 WindowE = environments(Ψ,WindowH);
@@ -158,13 +161,13 @@ for n = 1:number_of_timesteps
     t += dt
     println("Timestep n = $(n), t = $(t)")
 
-    Ψt,WindowE = timestep!(Ψt,WindowH,t,dt,alg,WindowE;leftevolve=false,rightevolve=true)
+    Ψt,WindowE = timestep!(Ψt,WindowH,t,dt,alg,WindowE;leftevolve=false,rightevolve=true) # in place
 
     if (n % frequency_of_saving == 0)
         println("difference with starting point is $(norm(Ψt.window.AC[1]-Ψ.window.AC[1]))")
-        MPSs[div(n,frequency_of_saving)] = Ψt
-        WindowMPSs[div(n,frequency_of_saving)] = Ψt.window
-        occ_numbers[div(n,frequency_of_saving),:] = get_occupation_number_matrices(Ψt.window, N, m, σ, x₀)
+        MPSs[div(n,frequency_of_saving)] = copy(Ψt)
+        WindowMPSs[div(n,frequency_of_saving)] = copy(Ψt.window)
+        # occ_numbers[div(n,frequency_of_saving),:] = get_occupation_number_matrices(Ψt.window, N, am_tilde_0, σ, x₀)
         Es[div(n,frequency_of_saving),:] = expectation_value(Ψt.window, Ht_mid(t))
     end
 

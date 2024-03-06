@@ -44,6 +44,7 @@ function my_finalize(t, Ψ, H, envs, si, tosave)
     return Ψ, envs
 end
 
+#=
 # WindowMPS as bath
 #-------------------
 
@@ -75,11 +76,12 @@ szdat = [expectation_value(Ψwindow, sz)]
 
 #setup for time_evolve
 alg = TDVP2(; trscheme=truncdim(20),
-            finalize=(t, Ψ, H, envs) -> my_finalize(t, Ψ, H, envs, sz,szdat));
+            finalize=(t, Ψ, H, envs) -> my_finalize(t, Ψ, H, envs, Window(sz,sz,sz),szdat));
 t_span = 0:0.05:3.0
 Ψwindow, envs = time_evolve!(Ψwindow, H, t_span, alg, envs);
 
 display(heatmap(real.(reduce((a, b) -> [a b], szdat))))
+=#
 
 # WindowMPS as interpolation
 #----------------------------
@@ -125,14 +127,14 @@ scatter(0:(L + 1), es; label="")
 g_uni = 3.0
 gl = 3.0
 gr = 4.0
-L = 40
+L = 5
 
 Hl = my_transverse_field_ising([g_uni]);
 Hr = my_transverse_field_ising([g_uni]);
 Hfin = my_transverse_field_ising([g_uni]);
 Hgs = Window(Hl, Hfin, Hr);
 
-D = 12
+D = 3
 Ψl = InfiniteMPS([ℂ^2], [ℂ^D])
 Ψr = InfiniteMPS([ℂ^2], [ℂ^D]) #we do not want Ψr === ψl
 #Ts = map(i->TensorMap(rand,ComplexF64,ℂ^D*ℂ^2,ℂ^D),eachindex(gs))

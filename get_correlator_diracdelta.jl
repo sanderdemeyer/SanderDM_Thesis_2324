@@ -154,7 +154,7 @@ Plus_space = U1Space(1 => 1)
 Triv_space = U1Space(0 => 1)
 S⁺ = TensorMap([0.0+0.0im 1.0+0.0im; 0.0+0.0im 0.0+0.0im], Triv_space ⊗ pspace, pspace ⊗ Plus_space)
 S⁻ = TensorMap([0.0+0.0im 0.0+0.0im; 1.0+0.0im 0.0+0.0im], Plus_space ⊗ pspace, pspace ⊗ Triv_space)
-S_z_symm = TensorMap([0.5+0.0im 0.0+0.0im; 0.0+0.0im -0.5+0.0im], Triv_space ⊗ pspace, pspace ⊗ Triv_space)
+# S_z_symm = TensorMap([0.5+0.0im 0.0+0.0im; 0.0+0.0im -0.5+0.0im], Triv_space ⊗ pspace, pspace ⊗ Triv_space)
 
 H = get_thirring_hamiltonian_symmetric(m, delta_g, v)
 

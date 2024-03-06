@@ -14,6 +14,21 @@ include("get_groundstate_energy.jl")
 include("get_thirring_hamiltonian.jl")
 include("get_thirring_hamiltonian_symmetric.jl")
 
+
+spin = 1//2
+pspace = U1Space(i => 1 for i in (-spin):spin)
+S_z_symm2 = TensorMap([0.5+0.0im 0.0+0.0im; 0.0+0.0im -0.5+0.0im], pspace, pspace)
+H = @mpoham sum((S_z_symm2){i} for i in vertices(InfiniteChain(2)))
+Plus_space = U1Space(1 => 1)
+Triv_space = U1Space(0 => 1)
+S⁺2 = TensorMap([0.0+0.0im 1.0+0.0im; 0.0+0.0im 0.0+0.0im], Triv_space ⊗ pspace, pspace ⊗ Plus_space)
+S⁻2 = TensorMap([0.0+0.0im 0.0+0.0im; 1.0+0.0im 0.0+0.0im], Plus_space ⊗ pspace, pspace ⊗ Triv_space)
+
+@load "operators_for_occupation_number" S⁺ S⁻ S_z_symm
+
+
+break
+
 x = 1:10
 y1 = rand(10)
 y2 = rand(10)
