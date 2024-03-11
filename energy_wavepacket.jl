@@ -35,7 +35,12 @@ right_env = rightenv(envs, i, state)
 transf = TransferMatrix(mps.AC[i], H[i], mps.AC[i])
 transf2 = TransferMatrix(mps.AC[i-1], H[i-1], mps.AC[i-1])
 
-left_env * (transf * right_env)
+right = (transf * right_env)
+left_env * transf
+for (j,k) in keys(H[i])
+    V = @tensor right[j][1 2; 3] * left_env[j][3 2; 1]
+end
+break
 
 println(typeof(left_env)) # = PeriodicArray, 2, 1
 println(typeof(right_env)) # PeriodicArray, 2, 1

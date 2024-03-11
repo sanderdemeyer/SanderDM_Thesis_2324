@@ -15,7 +15,7 @@ include("get_groundstate.jl")
 include("get_occupation_number_matrices.jl")
 
 
-saving_time = 3.0
+saving_time = 200.0
 
 function spatial_ramping_lin(i, i_start, i_end)
     if i < i_start
@@ -40,17 +40,24 @@ function spatial_ramping_S(i, i_middle, κ)
     return value
 end
 
-function my_finalize(t, Ψ, H, envs, MPSs, Es)
-    push!(MPSs, Ψ)
-    E = zeros(ComplexF64, N+4)
-    for op in H(t).ops
-        E += expectation_value(Ψ, op)
+function my_finalize(t, Ψ, H, envs, name)
+    if ((t) % (frequency_of_saving*dt) == 0.0)
+        println("Currently saving for t = $(t)")
+        jldopen(name, "a") do file
+            file["MPSs/$(t)"] = copy(Ψ)
+            file["Es/$(t)"] = expectation_value(Ψ, H(t),envs)
+        end
+        # E = zeros(ComplexF64, N+4)
+        # for op in H(t).ops
+        #     E += expectation_value(Ψ, op)
+        # end
+        # E = expectation_value(Ψ, H(t),envs)
+        # push!(Es, E[3:end-2])
     end
-    push!(Es, E[3:end-2])
-    if (t % saving_time == 0.0)
-        println("Saving")
-        @save "test_window_time_evolution_test_v_sweep_N_$(N)_mass_$(am_tilde_0)_delta_g_$(Delta_g)_ramping_$(RAMPING_TIME)_dt_$(dt)_nrsteps_$(number_of_timesteps)_vmax_$(v_max)_kappa_$(κ)_trunc_$(truncation)_savefrequency_$(frequency_of_saving)" MPSs Es
-    end
+    # if (t % saving_time == 0.0)
+    #     println("Saving")
+    #     @save "test_window_time_evolution_test_v_sweep_N_$(N)_mass_$(am_tilde_0)_delta_g_$(Delta_g)_ramping_$(RAMPING_TIME)_dt_$(dt)_nrsteps_$(number_of_timesteps)_vmax_$(v_max)_kappa_$(κ)_trunc_$(truncation)_savefrequency_$(frequency_of_saving)" MPSs Es
+    # end
     return (Ψ, envs)
 end
 
@@ -68,7 +75,7 @@ end
 #     push!(energies, expectation_value(Ψ.window, H.middle(t)))
 # end
 
-N = 10 # Number of sites
+N = 4 # Number of sites
 D = 3
 
 @assert N % 2 == 0
@@ -80,7 +87,7 @@ lijst_ramping = [spatial_ramping_S(i, i_b, κ) for i in 1:N]
 # spatial_sweep = i_end-i_start
 
 dt = 1.0
-max_time_steps = 12 #3000 #7000
+max_time_steps = 15 #3000 #7000
 t_end = dt*max_time_steps
 
 am_tilde_0 = 1.0
@@ -117,7 +124,7 @@ x₀ = 40
 # energies = zeros(ComplexF64, (N, number_of_timesteps))
 # gs_energies = zeros(ComplexF64, (N, div(number_of_timesteps,frequency_of_VUMPS)+1))
 
-frequency_of_saving = 1
+frequency_of_saving = 3
 
 # Ht_right = LazySum([H_without_v, MultipliedOperator(Interaction_v_term, f)])
 # Ht_mid = LazySum([repeat(H_without_v,div(N,2)), MultipliedOperator(Interaction_v_term_window,f)])
@@ -143,12 +150,27 @@ occ_numbers = zeros(Float64,div(number_of_timesteps,frequency_of_saving), div(N,
 
 testt = [0.0]
 
+name = "window_time_evolution_variables_v_sweep_N_$(N)_mass_$(am_tilde_0)_delta_g_$(Delta_g)_ramping_$(RAMPING_TIME)_dt_$(dt)_nrsteps_$(number_of_timesteps)_vmax_$(v_max)_kappa_$(κ)_trunc_$(truncation)_savefrequency_$(frequency_of_saving)"
+if isfile(name*".jld2")
+    println("Warning - file already exists -- appending with new")
+    name = name * "_new"
+end
+name = name * ".jld2"
+if (isfile(name))
+    println("new also exists already, aborting!")
+    @assert 0 == 1
+end
+
 left_alg = right_alg = TDVP()
 middle_alg =  TDVP2(; trscheme=truncdim(D));
 alg = WindowTDVP(;left=left_alg,middle=middle_alg,right=right_alg,
-            finalize=(t, Ψ, H, envs) -> my_finalize(t, Ψ, H, envs, MPSs, Es));
+            finalize=(t, Ψ, H, envs) -> my_finalize(t, Ψ, H, envs, name));
 t_span = 0:dt:t_end
+
+jldopen(name, "a") do file
+    file["MPSs/$(0.0)"] = copy(Ψ)
+end
 
 Ψ, envs = time_evolve!(Ψ, WindowH, t_span, alg, envs; verbose=true);
 
-@save "test_window_time_evolution_test_v_sweep_N_$(N)_mass_$(am_tilde_0)_delta_g_$(Delta_g)_ramping_$(RAMPING_TIME)_dt_$(dt)_nrsteps_$(number_of_timesteps)_vmax_$(v_max)_kappa_$(κ)_trunc_$(truncation)_savefrequency_$(frequency_of_saving)" MPSs Es
+# @save "test_window_time_evolution_test_v_sweep_N_$(N)_mass_$(am_tilde_0)_delta_g_$(Delta_g)_ramping_$(RAMPING_TIME)_dt_$(dt)_nrsteps_$(number_of_timesteps)_vmax_$(v_max)_kappa_$(κ)_trunc_$(truncation)_savefrequency_$(frequency_of_saving)"

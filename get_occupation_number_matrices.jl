@@ -214,7 +214,7 @@ function gaussian_array(X, k₀, σ, x₀)
     array = zeros(ComplexF64, N)
     normalization = 0.0
     for (i,k) in enumerate(X)
-        k = mod(k + pi, 2*pi) - pi
+        # k = mod(k + pi, 2*pi) - pi
         array[i] = exp(-im*k*x₀) * exp(-((k-k₀)/(2*σ))^2)
         normalization += (exp(-((k-k₀)/(2*σ))^2))^2
     end
@@ -232,7 +232,7 @@ function dirac_delta_array(X, k₀, σ, x₀)
     return array
 end
 
-function get_occupation_number_matrices(mps, L, m, σ, x₀)
+function get_occupation_number_matrices_base(mps, L, m, σ, x₀)
     N = div(L,2)-1
     @load "operators_for_occupation_number" S⁺ S⁻ S_z_symm
     corr = zeros(ComplexF64, 2*N, 2*N)
@@ -259,6 +259,35 @@ function get_occupation_number_matrices(mps, L, m, σ, x₀)
     end
 
     return occ
+end
+
+function get_occupation_number_matrices(mps, L, m, σ, x₀; datapoints = div(L,2)-1)
+    N = div(L,2)-1
+    @load "operators_for_occupation_number" S⁺ S⁻ S_z_symm
+    corr = zeros(ComplexF64, 2*N, 2*N)
+    for i = 2:2*N+1
+        corr_bigger = correlator(mps, S⁺, S⁻, S_z_symm, i, 2*N+2)
+        corr[i-1,:] = corr_bigger[2:2*N+1]
+    end
+    
+    X = [(2*pi)/N*i - pi for i = 0:N-1]
+    X_finer = [(2*pi)/datapoints*i - pi for i = 0:datapoints-1]
+
+    (V₊,_) = V_matrix(X, m)
+
+    occ_matrix = V₊*corr*adjoint(V₊)
+
+    occ = zeros(Float64, datapoints)
+    for (i,k₀) in enumerate(X_finer)
+        array = gaussian_array(X, k₀, σ, x₀)
+        occupation_number = adjoint(array)*occ_matrix*array
+        if (abs(imag(occupation_number)) > 1e-3)
+            println("Warning, complex number for occupation number: $(occupation_number)")
+        end
+        occ[i] = real(occupation_number)
+    end
+
+    return (X_finer, occ)
 end
 
 # L = 70

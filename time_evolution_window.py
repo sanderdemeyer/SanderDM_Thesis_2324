@@ -10,16 +10,16 @@ from scipy.signal import argrelextrema
 import scipy.optimize as opt
 
 N = 70
-am_tilde_0 = 1.0
+am_tilde_0 = 0.3
 Delta_g = 0.0
 RAMPING_TIME = 5
 dt = 0.01
 v_max = 1.5
 spatial_sweep = 10
-truncation = 1.5
+truncation = 7.0
 nr_steps = 1500
-kappa = 0.6
-frequency_of_saving = 5
+kappa = 0.5
+frequency_of_saving = 50
 
 file = f"window_time_evolution_mass_{am_tilde_0}_delta_g_{Delta_g}_ramping_{RAMPING_TIME}_dt_{dt}_vmax_{v_max}_spatialsweep_{spatial_sweep}_trunc_{truncation}"
 file = f"window_time_evolution_mass_sweep_mass_{am_tilde_0}_delta_g_{Delta_g}_ramping_{RAMPING_TIME}_dt_{dt}_vmax_{v_max}_spatialsweep_{spatial_sweep}_trunc_{truncation}"
@@ -27,19 +27,22 @@ file = f"SanderDM_Thesis_2324/window_time_evolution_v_sweep_N_{N}_mass_{am_tilde
 file = f"SanderDM_Thesis_2324/window_time_evolution_v_sweep_N_{N}_mass_{am_tilde_0}_delta_g_{Delta_g}_ramping_{RAMPING_TIME}_dt_{dt}_nrsteps_{nr_steps}_vmax_{v_max}_kappa_{kappa}_trunc_{truncation}_savefrequency_{frequency_of_saving}"
 f = h5py.File(file)
 
-
 with h5py.File(file, 'r') as file:
     # Access the dataset
     dataset = file['Es']
-
+    print(dataset)
     # Create a list to store the vectors
     Es = []
 
     for ref in dataset[:-1]:
         # Use the 'value' attribute to access the data referenced by the object
         vector = file[ref]
-        new_vector = [item[0] for item in vector]
-
+        # new_vector = [item[0] for item in vector]
+        vector = vector[()]
+        print(vector)
+        new_vector = [item for item in vector]
+        new_vector = vector
+        print(vector)
         # Convert complex numbers to Python complex numbers
         Es.append(new_vector)
 
@@ -61,7 +64,7 @@ plt.title(f't = {n_t*dt}')
 plt.show()
 
 wave_arrivals = np.zeros(N)
-plot = False
+plot = True
 
 for position in range(N):
     wave = np.array([Es[n_t][position] for n_t in range(timesteps)])
@@ -71,8 +74,10 @@ for position in range(N):
         print(maxima[0][0])
         wave_arrivals[position] = maxima[0][0]
 
-    if plot:
+    if (plot) and (position == 33):
         plt.plot(range(timesteps), wave)
+        plt.xlabel('Timestep')
+        plt.ylabel('Energy')
         plt.title(f'For i = {position}')
         plt.show()
 

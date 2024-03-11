@@ -32,20 +32,20 @@ function energy(k, m)
     end
 end
 
-L = 70
-m = 0.0
-Delta_g = 0.0
+L = 200
+m = 0.3
+Delta_g = -0.45
 RAMPING_TIME = 5
 dt = 0.01
 v_max = 1.5
 spatial_sweep = 10
-truncation = 1.5
+truncation = 7.0
 nr_steps = 1500
 kappa = 0.6
 frequency_of_saving = 5
 
 
-@load "SanderDM_Thesis_2324/gs_mps_trunc_2.5_mass_$(m)_v_0.0_Delta_g_0.0" mps
+@load "SanderDM_Thesis_2324/gs_mps_trunc_$(truncation)_mass_$(m)_v_0.0_Delta_g_$(Delta_g)" mps
 
 N = div(L,2)-1
 X = [(2*pi)/N*i - pi for i = 0:N-1]
@@ -53,18 +53,31 @@ Es = [energy(k,m) for k in X]
 # X = [2*((2*pi)/N*i - pi) for i = 0:N-1]
 
 σ = 2*(2*pi/L)
+σ = pi/L/4
 x₀ = div(L,2)
 
+m_eff = m*0.825
+
 occ_number_data = get_occupation_number_matrices(mps, L, m, σ, x₀)
+occ_number_data_eff = get_occupation_number_matrices(mps, L, m_eff, σ, x₀)
+
+for i = div(N,2)-5:div(N,2)+5
+    println("k = $(X[i])")
+    println("$(occ_number_data[i]) for m")
+    println("$(occ_number_data_eff[i]) for m_eff")
+end
+
 
 κ = (kappa/2)*v_max
 Es_fd = [fermi_dirac(ω, κ) for ω in Es]
 
 
-plt = plot(Es, occ_number_data, label="occupation number", xlabel="E", ylabel="occupation", linewidth=2)
-plot!(Es, Es_fd, label="fermi-dirac", xlabel="E", ylabel="occupation", linestyle=:dash, linewidth=2)
-display(plt)
+plt = plot(X, occ_number_data, label="occupation number for m", xlabel="k", ylabel="occupation", linewidth=2, title="m = $(m), m_eff = $(round(m_eff,digits=4))")
+plot!(X, occ_number_data_eff, label="occupation number for m_eff", xlabel="k", ylabel="occupation", linewidth=2, title="m = $(m), m_eff = $(round(m_eff,digits=4))")
+# plot!(Es, Es_fd, label="fermi-dirac", xlabel="E", ylabel="occupation", linestyle=:dash, linewidth=2)
 
+display(plt)
+savefig("occupation_number_m_$(m).png")
 
 # plt = plot(X, Es)
 # display(plt)

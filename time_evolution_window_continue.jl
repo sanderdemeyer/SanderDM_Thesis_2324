@@ -1,3 +1,5 @@
+include("dep_helper.jl")
+
 using LinearAlgebra
 # using Base
 # using KrylovKit
@@ -80,7 +82,7 @@ truncation = 8.0
 (Hopping_term, Mass_term, Interaction_term, Interaction_v_term, Interaction_v_term_window, Mass_term_window) = get_thirring_hamiltonian_window(1.0, 1.0, 1.0, N, lijst_ramping)
 H_without_v = Hopping_term + am_tilde_0*Mass_term + Delta_g*Interaction_term
 
-(gs_mps, gs_envs) = get_groundstate(am_tilde_0, Delta_g, v, [5 10], truncation, truncation+3.0; number_of_loops=2)
+(gs_mps, gs_envs) = get_groundstate(am_tilde_0, Delta_g, v, [50 100], truncation, truncation+3.0; number_of_loops=7)
 
 Ψ = WindowMPS(gs_mps,N); # state is a windowMPS
 
@@ -161,7 +163,7 @@ WindowH = Window(Ht_left,Ht_mid,Ht_right);
 # occ_numbers = zeros(Float64,div(number_of_timesteps,frequency_of_saving), div(N,2)-1)
 # occ_numbers_20 = zeros(Float64,div(number_of_timesteps,frequency_of_saving), div(N,2)-1)
 
-@load "SanderDM_Thesis_2324/window_time_evolution_v_sweep_N_$(N)_mass_$(am_tilde_0)_delta_g_$(Delta_g)_ramping_$(RAMPING_TIME)_dt_$(dt)_nrsteps_$(number_of_timesteps)_vmax_$(v_max)_kappa_$(κ)_trunc_$(truncation)_savefrequency_$(frequency_of_saving)" MPSs Es occ_numbers occ_numbers_20
+@load "window_time_evolution_v_sweep_N_$(N)_mass_$(am_tilde_0)_delta_g_$(Delta_g)_ramping_$(RAMPING_TIME)_dt_$(dt)_nrsteps_$(number_of_timesteps)_vmax_$(v_max)_kappa_$(κ)_trunc_$(truncation)_savefrequency_$(frequency_of_saving)" MPSs Es occ_numbers occ_numbers_20
 point_of_continuance = 100
 Ψt = MPSs[point_of_continuance]
 WindowE = environments(Ψt, WindowH)
