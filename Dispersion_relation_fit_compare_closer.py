@@ -1,5 +1,5 @@
 """
-uses the file Disperion_relation_fit_function.py for fitting, then plots the results
+uses the file Disperion_relation_fit_function.py for fitting, this file then plots the results
 """
 
 

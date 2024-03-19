@@ -5,7 +5,9 @@ import scipy.optimize as opt
 from sklearn.metrics import r2_score
 import csv
 from scipy.optimize import curve_fit
+import json
 
+"""For plots of the renormalized values of c and m"""
 
 def function_fit_base(k0, x, m_fit, v_fit):
     return k0 + v_fit*x + x**2/(2*m_fit) - (2*v_fit*x**3)/3 - (4*m_fit*k0+3)/(24*m_fit**2*k0)*x**4
@@ -144,38 +146,49 @@ print(mass_sigma_renorm)
 print(c_renorm)
 print(c_sigma_renorm)
 
+schmidt_cuts_considered = [4.5] # can be changed to [3.5, 4.0, 4.5]
 
+v_renorms = {}
+mass_renorms = {}
+c_renorms = {}
 
-for (schmidt_number, schmidt_cut) in enumerate([3.5, 4.0, 4.5]):
+for (schmidt_number, schmidt_cut) in enumerate(schmidt_cuts_considered):
     for m_index in range(1, 7):
         #plt.scatter([-0.15*i for i in range(1, 5)], v_renorm[schmidt_number,:,m_index-excluded_0]/(-0.15), label = f'mass = {round(m_index*0.1,2)}. schmidt = {schmidt_cut}')
         plt.errorbar([-0.15*i for i in range(1, 5)], v_renorm[schmidt_number,:,m_index-excluded_0]/(-0.15), v_sigma_renorm[schmidt_number,:,m_index-excluded_0]/(0.15), label = f'mass = {round(m_index*0.1,2)}. schmidt = {schmidt_cut}', fmt="o")
         #plt.scatter([-0.15*i for i in range(1, 5)], v_renorm[:,m_index-excluded_0]/(-0.15), label = f'mass = {round(m_index*0.1,2)}. schmidt = {schmidt_cut}')
+        v_renorms[round(m_index*0.1,2)] = {-0.15*i : v_renorm[schmidt_number,i-1,m_index-excluded_0]/(-0.15) for i in range(1,5)}
     plt.xlabel(r'$\Delta (g)$', fontsize = 15)
     plt.ylabel(r'$v_{eff}$', fontsize = 15)
     plt.title(fr'Relative renormalization from $v = 0.15$ for schmidt-cut = {schmidt_cut}', fontsize = 15)
     plt.legend()
 plt.show()
 
-for (schmidt_number, schmidt_cut) in enumerate([3.5, 4.0, 4.5]):
+for (schmidt_number, schmidt_cut) in enumerate(schmidt_cuts_considered):
     for m_index in range(1, 7):
         plt.errorbar([-0.15*i for i in range(1, 5)], mass_renorm[schmidt_number,:,m_index-excluded_0]/(m_index*0.1), mass_sigma_renorm[schmidt_number,:,m_index-excluded_0]/(m_index*0.1), label = f'mass = {round(m_index*0.1,2)}. schmidt = {schmidt_cut}', fmt="o")
         #plt.scatter([-0.15*i for i in range(1, 5)], v_renorm[:,m_index-excluded_0]/(-0.15), label = f'mass = {round(m_index*0.1,2)}. schmidt = {schmidt_cut}')
+        mass_renorms[round(m_index*0.1,2)] = {-0.15*i : mass_renorm[schmidt_number,i-1,m_index-excluded_0]/(m_index*0.1) for i in range(1,5)}
     plt.xlabel(r'$\Delta (g)$', fontsize = 15)
     plt.ylabel(r'$mass_{eff}$', fontsize = 15)
     plt.title(fr'Relative renormalization the mass for schmidt-cut = {schmidt_cut}', fontsize = 15)
     plt.legend()
 plt.show()
 
-for (schmidt_number, schmidt_cut) in enumerate([3.5, 4.0, 4.5]):
+for (schmidt_number, schmidt_cut) in enumerate(schmidt_cuts_considered):
     for m_index in range(1, 7):
         plt.errorbar([-0.15*i for i in range(1, 5)], c_renorm[schmidt_number,:,m_index-excluded_0], c_sigma_renorm[schmidt_number,:,m_index-excluded_0], label = f'mass = {round(m_index*0.1,2)}. schmidt = {schmidt_cut}', fmt="o")
         #plt.scatter([-0.15*i for i in range(1, 5)], v_renorm[:,m_index-excluded_0]/(-0.15), label = f'mass = {round(m_index*0.1,2)}. schmidt = {schmidt_cut}')
+        c_renorms[round(m_index*0.1,2)] = {-0.15*i : c_renorm[schmidt_number,i-1,m_index-excluded_0] for i in range(1,5)}
     plt.xlabel(r'$\Delta (g)$', fontsize = 15)
     plt.ylabel(r'$c_{eff}$', fontsize = 15)
     plt.title(fr'Relative renormalization of c for schmidt-cut = {schmidt_cut}', fontsize = 15)
     plt.legend()
 plt.show()
+
+
+with open('renormalization_data.json', 'w') as json_file:
+    json.dump([v_renorms, mass_renorms, c_renorms], json_file)
 
 print(intentionele_stop)
 

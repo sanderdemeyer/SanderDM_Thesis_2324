@@ -17,6 +17,8 @@ truncation = 4.0
 
 k_values = LinRange(-bounds, bounds,length(Bs))
 
+break
+
 U_space = Tensor(ones, ℂ^1)
 B_tensors = []
 for iₖ = 1:length(Bs)
@@ -55,6 +57,15 @@ H = get_thirring_hamiltonian(mass, Delta_g, v)
 J = expectation_value(mps, H)
 H_ev = @mpoham sum((J[i]*unit){i} for i in vertices(InfiniteChain(2)))
 H_con = H-H_ev
+
+S⁺ = TensorMap([0.0+0.0im 1.0+0.0im; 0.0+0.0im 0.0+0.0im], ℂ^1⊗ℂ^2, ℂ^2⊗ℂ^1)
+Szₘ = TensorMap((-2*im)*[0.5+0.0im 0.0+0.0im; 0.0+0.0im -0.5+0.0im], ℂ^1⊗ℂ^2, ℂ^2⊗ℂ^1)
+
+Os = [Szₘ S⁺; 0 unit]
+
+SparseMPO(Os, [ℂ^1 ℂ^1 ℂ^1 ; ℂ^1 ℂ^1 ℂ^1], [ℂ^2 ℂ^2 ℂ^2])
+SparseMPOSlice(Os, [ℂ^1 ℂ^1 ℂ^1], [ℂ^1 ℂ^1 ℂ^1], [ℂ^2 ℂ^2 ℂ^2])
+
 #=
 for i = 1:length(energies)
     E1 = @tensor mps.AC[1][1 2; 3] * conj(B_tensors[i][1 2; 3])
@@ -93,6 +104,7 @@ end
 break
 =#
 
+break
 
 # trying to calculate the energies
 

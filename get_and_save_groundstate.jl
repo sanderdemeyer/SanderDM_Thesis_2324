@@ -6,14 +6,15 @@ using MPSKitModels, TensorKit, MPSKit
 
 include("get_groundstate.jl")
 
-trunc = 2.0
-mass = 0.2
+trunc = 1.5
+mass = 0.3
 v = 0.0
-Delta_g = -0.45
+Delta_g = 0.0
 
 (mps, envs) = get_groundstate(mass, Delta_g, v, [50 100], trunc, 1e-10; number_of_loops=7)
 
 @save "SanderDM_Thesis_2324/gs_mps_trunc_$(trunc)_mass_$(mass)_v_$(v)_Delta_g_$(Delta_g)" mps envs
+H0 = get_thirring_hamiltonian_symmetric(mass, Delta_g, v)
 
 N = 2
 tot_bonddim = 0

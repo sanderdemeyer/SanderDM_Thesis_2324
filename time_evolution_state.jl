@@ -81,6 +81,7 @@ array = adjoint(gaussian)*V₊
 my_list = [i <= 10 ? 1.0 : (i == 11 ? 0.5 : 0.0) for i in 1:21]
 
 S⁺ = TensorMap([0.0+0.0im 1.0+0.0im; 0.0+0.0im 0.0+0.0im], ℂ^1⊗ℂ^2, ℂ^2⊗ℂ^1)
+S⁺ = TensorMap([0.0+0.0im 1.0+0.0im; 0.0+0.0im 0.0+0.0im], ℂ^2, ℂ^2)
 Sz = TensorMap([0.5+0.0im 0.0+0.0im; 0.0+0.0im -0.5+0.0im], ℂ^2, ℂ^2)
 
 Hs = []
@@ -90,7 +91,9 @@ for i = 1:N
     H = @mpoham sum((lijst_S⁺[j]*S⁺){j} for j in vertices(InfiniteChain(N)))
     push!(Hs, H)
 end
-Interaction_v_term = @mpoham (im*v*0.5) * sum(operator_threesite_final{i, i + 1, i + 2} for i in vertices(InfiniteChain(2)))
+
+# Interaction_v_term = @mpoham (im*v*0.5) * sum(operator_threesite_final{i, i + 1, i + 2} for i in vertices(InfiniteChain(2)))
+
 
 
 break
@@ -133,3 +136,4 @@ t_span = 0:dt:t_end
 Ψ, envs = time_evolve!(Ψ, WindowH, t_span, alg, envs; verbose=true);
 
 @save "test_window_time_evolution_test_v_sweep_N_$(N)_mass_$(am_tilde_0)_delta_g_$(Delta_g)_ramping_$(RAMPING_TIME)_dt_$(dt)_nrsteps_$(number_of_timesteps)_vmax_$(v_max)_kappa_$(κ)_trunc_$(truncation)_savefrequency_$(frequency_of_saving)" MPSs Es
+

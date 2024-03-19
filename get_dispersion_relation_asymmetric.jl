@@ -13,7 +13,7 @@ v = 0.0
 trunc = 4.0
 bounds = pi/2
 
-@load "SanderDM_Thesis_2324/gs_mps_wo_symmetries_trunc_$(trunc)_mass_$(am_tilde_0)_v_$(v)_Delta_g_$(Delta_g)" mps envs
+# @load "SanderDM_Thesis_2324/gs_mps_wo_symmetries_trunc_$(trunc)_mass_$(am_tilde_0)_v_$(v)_Delta_g_$(Delta_g)" mps envs
 
 hamiltonian = get_thirring_hamiltonian(am_tilde_0, Delta_g, v)
 gs_energy = expectation_value(mps, hamiltonian);

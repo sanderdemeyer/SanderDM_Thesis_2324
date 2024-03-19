@@ -1,10 +1,10 @@
-# using LinearAlgebra
-# using Base
-# using JLD2
-# using MPSKitModels, TensorKit, MPSKit
-# using Statistics
+using LinearAlgebra
+using Base
+using JLD2
+using MPSKitModels, TensorKit, MPSKit
+using Statistics
 
-# include("get_groundstate.jl")
+include("get_groundstate.jl")
 
 bounds = pi/72
 bound = fill(bounds, 1, 1)
@@ -26,6 +26,28 @@ end
 
 println(length(k_values))
 println(k_values)
+# NEW: for v = 0
+v = 0.0
+trunc = 2.5
+
+for delta_g_index = 1:4
+    for mass_index = 1:6
+        Delta_g = -0.15*delta_g_index
+        am_tilde_0 = 0.1*mass_index
+
+        (mps,envs) = get_groundstate(am_tilde_0, Delta_g, v, [15 50], trunc, 7.0)
+        hamiltonian = get_thirring_hamiltonian_symmetric(am_tilde_0, Delta_g, v)
+        gs_energy = expectation_value(mps, hamiltonian);
+
+        (energies,Bs) = excitations(hamiltonian,QuasiparticleAnsatz(), k_values,mps,envs, sector = Irrep[U₁](1));
+
+        print("Done with excitations")
+
+        @save "Dispersion_pi_over_72_v_0_m_$(am_tilde_0)_delta_g_$(Delta_g)_v_$(v)_trunc_$(trunc)" gs_energy bounds energies Bs bound
+    end
+end
+
+# OLD: for v != 0
 # for v_term = 0:1
 #     for delta_g_index = 4:5
 #         for mass_index = 1:6
