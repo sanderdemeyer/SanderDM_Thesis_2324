@@ -35,7 +35,7 @@ middle = (-2*im)*Sz
 hamiltonian = get_thirring_hamiltonian(mass, Delta_g, v)
 
 
-N = 50
+N = 6
 
 k = 0.4
 X = [(2*pi)/N*i - pi for i = 0:N-1]
@@ -48,24 +48,12 @@ gaussian = gaussian_array(X, k, σ, x₀)
 
 wi = gaussian*adjoint(V₊)
 
-# gaussian = adjoint([(i==div(N,2)) for i = 1:N])
-# wi = gaussian*V₊
-
-plt = plot(1:N, real.(adjoint(gaussian)), label = "gaussian")
-display(plt)
-
-plt = plot(1:2*N, real.(adjoint(wi)), label = "wi")
-display(plt)
-
-break
-
-
-E = expectation_value(mps,hamiltonian)
-println(E)
-# plt = plot(1:N, avged(E), label = "before")
+# plt = plot(1:N, real.(adjoint(gaussian)), label = "gaussian")
 # display(plt)
 
-# break
+# plt = plot(1:2*N, real.(adjoint(wi)), label = "wi")
+# display(plt)
+
 
 println("making mps's")
 mps_tensors = []
@@ -112,12 +100,17 @@ Eafter = expectation_value(Ψ,hamiltonian)
 plt = plot(1:N, avged(Eafter), label = "after")
 display(plt)
 
-for i = 1:10
+Es = []
+
+for i = 1:2
     global Ψ
     global envs
     (Ψ, envs) = time_evolve!(Ψ, hamiltonian, t_span, alg, envs; verbose=true);
 
     Eafter = expectation_value(Ψ,hamiltonian)
-    plt = plot(1:N, avged(Eafter), label = "i = $(i)")
-    display(plt)
+    push!(Es, Eafter)
+    # plt = plot(1:N, avged(Eafter), label = "i = $(i)")
+    # display(plt)
 end
+
+@save "SanderDM_Thesis_2324/test_wavepacket_gs_mps_wo_symmetries_trunc_$(truncation)_mass_$(mass)_v_$(v)_Delta_g_$(Delta_g)_N_$(N)_dt_$(dt)_tend_$(t_end)" Es
