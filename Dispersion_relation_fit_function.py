@@ -186,7 +186,12 @@ def fit_function_factor(delta_g, v, mass, data_folder, factor, plot = False):
 def fit_function_factor_efficient(delta_g, v, mass, data_folder, factor, plot = False):
     ndp = 4 # Number of Data Points aan elke zijde rond k = 0, het totaal aantal datapunten waarmee gefit wordt, is dus 1+2*ndp
 
+    mass = round(mass,2)
+    delta_g = round(delta_g,2)
     smallest = np.pi/72/24/8
+
+    if delta_g == -0.0:
+        delta_g = 0.0
 
     factor_max = 48
     k_values = [0]
@@ -205,7 +210,7 @@ def fit_function_factor_efficient(delta_g, v, mass, data_folder, factor, plot = 
 
     #file = f"Dispersion_Data/{data_folder}/Dispersion_m_{mass} _delta_g_{delta_g} _v_{v}"
     #file = f"Dispersion_Data/{data_folder}/Dispersion_closer_m_{mass} _delta_g_{delta_g} _v_{v}"
-    file = f"Dispersion_Data/{data_folder}/Dispersion_pi_over_72_m_{mass} _delta_g_{delta_g} _v_{v}"
+    file = f"Dispersion_Data/{data_folder}/Dispersion_pi_over_72_v_0_m_{mass}_delta_g_{delta_g}_v_{v}_trunc_2.5"
 
     f = h5py.File(file, "r")
     energies = f["energies"][:]
@@ -219,8 +224,8 @@ def fit_function_factor_efficient(delta_g, v, mass, data_folder, factor, plot = 
 
     energies = [np.real(e[0]) for e in energies[0,:]]
 
-
-    k = np.linspace(-bounds, bounds,amount_data)
+    bounds = (ndp+1)*smallest*factor*1.1
+    # k = np.linspace(-bounds, bounds,amount_data)
     k_refined = np.linspace(-bounds, bounds, 1000)
 
     function_fit = lambda x, m, v : function_fit_base(energies[index_k_0], x, m, v)
@@ -281,6 +286,7 @@ def fit_function_factor_efficient(delta_g, v, mass, data_folder, factor, plot = 
 def Dispersion_relation_fit(closer, way_of_fitting = "factor", plot = False):
     data_folder = "Data closer"
     data_folder = "Data pi_over_72"
+    data_folder = "Data_pi_over_72_v_0"
 
     if way_of_fitting == "factor":
         function_to_fit = fit_function_factor
@@ -299,22 +305,22 @@ def Dispersion_relation_fit(closer, way_of_fitting = "factor", plot = False):
     # v_sigma_renorm = [[], [], []]
     # c_sigma_renorm = [[], [], []]
 
-    delta_g_number = 4
+    delta_g_number = 5
     mass_number = 7
     v_number = 1
     schmidt_cut_number = 3
-    mass_renorm = np.zeros((schmidt_cut_number, delta_g_number, mass_number))
-    v_renorm = np.zeros((schmidt_cut_number, delta_g_number, mass_number))
-    c_renorm = np.zeros((schmidt_cut_number, delta_g_number, mass_number))
-    mass_sigma_renorm = np.zeros((schmidt_cut_number, delta_g_number, mass_number))
-    v_sigma_renorm = np.zeros((schmidt_cut_number, delta_g_number, mass_number))
-    c_sigma_renorm = np.zeros((schmidt_cut_number, delta_g_number, mass_number))
+    mass_renorm = np.zeros((schmidt_cut_number, delta_g_number-1, mass_number))
+    v_renorm = np.zeros((schmidt_cut_number, delta_g_number-1, mass_number))
+    c_renorm = np.zeros((schmidt_cut_number, delta_g_number-1, mass_number))
+    mass_sigma_renorm = np.zeros((schmidt_cut_number, delta_g_number-1, mass_number))
+    v_sigma_renorm = np.zeros((schmidt_cut_number, delta_g_number-1, mass_number))
+    c_sigma_renorm = np.zeros((schmidt_cut_number, delta_g_number-1, mass_number))
 
     for (schmidt_number, schmidt_cut) in enumerate([3.5, 4.0, 4.5]):
         #data_folder = f"Data_cut_{schmidt_cut}"
         for (delta_g_index,delta_g) in enumerate([-0.15*i for i in range(1, delta_g_number)]): # 4 should be 5 sometimes
             for (mass_index,mass) in enumerate([0.1*i for i in range(1, mass_number)]):
-                v = 0.15
+                v = 0.0
                 (m_fit, v_fit, c_fit, m_fit_sigma, v_fit_sigma, c_fit_sigma) = function_to_fit(delta_g, v, mass, data_folder, closer, plot = plot)
                 mass_renorm[schmidt_number,delta_g_index,mass_index] = m_fit
                 v_renorm[schmidt_number,delta_g_index,mass_index] = v_fit

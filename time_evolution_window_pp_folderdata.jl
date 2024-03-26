@@ -18,11 +18,11 @@ include("get_occupation_number_matrices.jl")
 
 L = 70
 κ = 0.5
-truncation = 1.5
+truncation = 2.0
 # spatial_sweep = i_end-i_start
 
-dt = 0.01
-number_of_timesteps = 4500 #3000 #7000
+dt = 0.1
+number_of_timesteps = 1500 #3000 #7000
 am_tilde_0 = 0.03
 Delta_g = 0.0 # voor kleinere g, betere fit op dispertierelatie. Op kleinere regio fitten. Probeer voor delta_g = 0 te kijken of ik exact v of -v kan fitten in de dispertierelatie
 
@@ -46,20 +46,20 @@ Es_full = []
 occ_numbers = []
 X_finers = []
 
-N = div(L,2)
+N = div(L,2)-1
 
 σ = pi/L/4
 x₀ = div(L,2)
 points_below_zero = 250
-nodp = 2*points_below_zero+1
+nodp = N
 
 # (gs_mps, gs_envs) = get_groundstate(am_tilde_0, Delta_g, 0.0, [2 4], truncation, truncation+3.0; number_of_loops=2)
 
 number_of_savepoints = length(readdir(name))-1
-times = [dt*frequency_of_saving*n_t for n_t in 0:number_of_savepoints]
+times = [dt*frequency_of_saving*n_t for n_t in 0:number_of_savepoints-1]
 
 
-for n_t = [0 3 6 9 12 15 18 21 24 27 30]
+for n_t = 0:30
     println("started for $(n_t)")
     t = dt*frequency_of_saving*n_t
     file = jldopen(name*"$(t).jld2", "r")
@@ -81,19 +81,48 @@ for n_t = [0 3 6 9 12 15 18 21 24 27 30]
     println("bonddim per site is $(tot_bonddim/N)")
 
     # println(typeof(mps))
-    # (X_finer, occ_number_data) = get_occupation_number_matrices_left_moving(mps.middle, L, am_tilde_0, σ, x₀; datapoints = nodp)
-    # push!(occ_numbers, occ_number_data)
-    # push!(X_finers, X_finer)
-    # close(file)
+    (X_finer, occ_number_data) = get_occupation_number_matrices_left_moving(mps.middle, N, am_tilde_0, σ, x₀; datapoints = nodp)
+    push!(occ_numbers, occ_number_data)
+    push!(X_finers, X_finer)
+    close(file)
 end
 
 break
 
-plt = plot(X_finers[1], occ_numbers[1])
-for j = 2:length(X_finers)
-    plot!(X_finers[j], occ_numbers[j])
+plt = scatter(X_finers[1], occ_numbers[1])
+for j = [5 10 15 20 25 30] #2:length(X_finers)
+    scatter!(X_finers[j], occ_numbers[j])
 end
 display(plt)
+
+occ_t = []
+for i = 1:length(occ_numbers)
+    push!(occ_t, occ_numbers[i][div(N,2)-5])
+end
+plt = scatter(1:length(occ_numbers), occ_t)
+display(plt)
+
+E_finers = zeros(Float64, 34)
+for (i,k) in enumerate(X_finers[1])
+    lambda = sqrt(am_tilde_0^2 + sin(k/2)^2)
+    if k < 0.0
+        E_finers[i] = lambda
+    else
+        E_finers[i] = -lambda
+    end
+end
+
+plt = scatter(X_finers, E_finers)
+display(plt)
+
+
+plt = scatter(E_finers, occ_numbers[end])
+display(plt)
+
+last_occ_numbers = occ_numbers[end]
+last_E_finer = E_finers[end]
+
+@save "SanderDM_Thesis_2324/test_fermi_dirac" E_finers last_occ_numbers
 
 k0 = 300
 occs = [occ_numbers[i][k0] for i = 1:11]
@@ -113,14 +142,28 @@ end
 display(plt)
 
 
-z1 = 20
+z1 = 21
 z2 = 25
 
-plt = plot(times, [Es_full[j][z1] for j = 1:number_of_savepoints+1], label  = "i=$(z1)")
+plt = plot(times, [Es_full[j][z1] for j = 1:number_of_savepoints], label  = "i=$(z1)")
 for z0 = z1+1:z2
     println(z0)
-    plot!(times, [Es_full[j][z0] for j = 1:number_of_savepoints+1], label = "i=$z0")
+    plot!(times, [Es_full[j][z0] for j = 1:number_of_savepoints], label = "i=$z0")
 end
+display(plt)
+
+first_wave_arrival = []
+for z = 21:25
+    E = [Es_full[j][z] for j = 1:60]
+    index_max = findfirst(x->x==maximum(E), E)
+    println(index_max)
+    println(times[index_max])
+    push!(first_wave_arrival, times[index_max])
+end
+
+plt = scatter(21:25, first_wave_arrival)
+sites = LinRange(21, 25, 1000)
+plot!(sites, [(26.4-i)*4 for i = sites])
 display(plt)
 
 i = 23
@@ -132,3 +175,6 @@ time2 = times[findfirst(x->x==maximum(wave2), wave2)]
 
 speed = 1/(time2-time1)
 println("speed is $(speed)")
+
+
+@save "SanderDM_Thesis_2324/window_time_evolution_variables_v_sweep_N_$(L)_mass_$(am_tilde_0)_delta_g_$(Delta_g)_ramping_$(RAMPING_TIME)_dt_$(dt)_nrsteps_$(number_of_timesteps)_vmax_$(v_max)_kappa_$(κ)_trunc_$(truncation)_savefrequency_$(frequency_of_saving)/postprocessing" Es_full occ_numbers X_finers

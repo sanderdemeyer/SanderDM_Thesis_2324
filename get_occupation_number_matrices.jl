@@ -5,7 +5,7 @@ using TensorKit
 using MPSKitModels, TensorKit, MPSKit
 
 include("get_thirring_hamiltonian_symmetric.jl")
-
+include("correlator_new.jl")
 
 function V_matrix(X, m)
     N = length(X)
@@ -14,8 +14,8 @@ function V_matrix(X, m)
     for i = 0:N-1
         k = X[i+1]
         for n = 0:N-1
-            F[2*n+1, 2*i+1] = 1/sqrt(N) * exp(-im*k*n)
-            F[2*n+2, 2*i+2] = 1/sqrt(N) * exp(-im*k*n)
+            F[2*n+1, 2*i+1] = 1/sqrt(N) * exp(-im*k*(n+1))
+            F[2*n+2, 2*i+2] = 1/sqrt(N) * exp(-im*k*(n+1))
         end
     end
 
@@ -140,6 +140,34 @@ function get_occupation_number_matrices_right_moving(mps, N, m, σ, x₀; datapo
         corr_bigger = correlator(mps, S⁺, S⁻, S_z_symm, i, 2*N+2)
         corr[i-1,:] = corr_bigger[2:2*N+1]
     end
+    
+    X = [(2*pi)/N*i - pi for i = 0:N-1]
+    X_finer = [(2*pi)/datapoints*i - pi for i = 0:datapoints-1]
+
+    (V₊,V₋) = V_matrix(X, m)
+    occ_matrix = adjoint(V₊)*corr*(V₊)
+
+    occ = zeros(Float64, datapoints)
+    for (i,k₀) in enumerate(X)
+        array = gaussian_array(X, k₀, σ, x₀)
+        occupation_number = (array)*occ_matrix*adjoint(array)
+        if (abs(imag(occupation_number)) > 1e-2)
+            println("Warning, complex number for occupation number: $(occupation_number)")
+        end
+        occ[i] = real(occupation_number)
+    end
+
+    return (X_finer, occ)
+end
+
+function get_energy_matrices_right_moving(mps, H, N, m, σ, x₀; datapoints = N, Delta_g = 0.0, v = 0.0)
+    @load "operators_for_occupation_number" S⁺ S⁻ S_z_symm
+    corr = zeros(ComplexF64, 2*N, 2*N)
+    for i = 2:2*N+1
+        corr_bigger = correlator_tf(mps, H, S⁺, S⁻, (2*im)*S_z_symm, i, 2*N+2)
+        corr[i-1,:] = corr_bigger[2:2*N+1]
+    end
+    corr = corr + adjoint(corr)
     
     X = [(2*pi)/N*i - pi for i = 0:N-1]
     X_finer = [(2*pi)/datapoints*i - pi for i = 0:datapoints-1]

@@ -30,7 +30,7 @@ rounding = 3
 schmidt_cut = 3.5
 excluded_0 = 1 # do you want to ignore m = 0.0?
 
-delta_g_number = 4
+delta_g_number = 5
 mass_number = 7
 v_number = 1
 schmidt_cut_number = 3
@@ -48,12 +48,12 @@ else:
     print("Insert valid way_of_fitting")
     assert 0 == 1
 
-mass_renorms = np.zeros((max_index,schmidt_cut_number, delta_g_number, mass_number))
-v_renorms = np.zeros((max_index,schmidt_cut_number, delta_g_number, mass_number))
-c_renorms = np.zeros((max_index,schmidt_cut_number, delta_g_number, mass_number))
-mass_sigma_renorms = np.zeros((max_index,schmidt_cut_number, delta_g_number, mass_number))
-v_sigma_renorms = np.zeros((max_index,schmidt_cut_number, delta_g_number, mass_number))
-c_sigma_renorms = np.zeros((max_index,schmidt_cut_number, delta_g_number, mass_number))
+mass_renorms = np.zeros((max_index,schmidt_cut_number, delta_g_number-1, mass_number))
+v_renorms = np.zeros((max_index,schmidt_cut_number, delta_g_number-1, mass_number))
+c_renorms = np.zeros((max_index,schmidt_cut_number, delta_g_number-1, mass_number))
+mass_sigma_renorms = np.zeros((max_index,schmidt_cut_number, delta_g_number-1, mass_number))
+v_sigma_renorms = np.zeros((max_index,schmidt_cut_number, delta_g_number-1, mass_number))
+c_sigma_renorms = np.zeros((max_index,schmidt_cut_number, delta_g_number-1, mass_number))
 
 for (ind, closer) in enumerate([1 + i for i in range(max_index)]):
     #(mass_renorm, v_renorm, c_renorm, mass_sigma_renorm, v_sigma_renorm, c_sigma_renorm) = drff.Dispersion_relation_fit(closer, way_of_fitting="closer")
@@ -79,7 +79,7 @@ for (ind, closer) in enumerate([1 + i for i in range(max_index)]):
 
 function_to_fit = fit_exp
 
-show = ["c"]
+show = [] # plotting renormalized value of v when v = 0 makes no sense
 error_bars = False
 extrapolation_in_factor = False
 parabola_factor_values = np.linspace(0, max_index, 1000)
@@ -95,7 +95,8 @@ def fitted_values(data, fit_function_used='parabola'):
     else:
         print('invalid fit function')
     return fitted_values_fit
-delta_g_range = 4
+
+delta_g_range = 5
 
 if "v" in show:
     for m_index in range(1,7):
@@ -149,9 +150,12 @@ if "c" in show:
 
 # print("intentionally breaking")
 # assert(0 == 1)
-
 for m_index in range(1, 7):
-    plt.errorbar([-0.15*i for i in range(1, 5)], v_renorms[0,0,:,m_index-excluded_0]/(-0.15), v_sigma_renorms[0,0,:,m_index-excluded_0]/(0.15), label = f'mass = {round(m_index*0.1,2)}', fmt="o")
+    print("jfdkqlsmj")
+    print(np.shape([-0.15*i for i in range(1, delta_g_range)]))
+    print(np.shape(v_renorms[0,0,:,m_index-excluded_0]/(-0.15)))
+    print(np.shape(v_sigma_renorms[0,0,:,m_index-excluded_0]/(0.15)))
+    plt.errorbar([-0.15*i for i in range(1, delta_g_range)], v_renorms[0,0,:,m_index-excluded_0]/(-0.15), v_sigma_renorms[0,0,:,m_index-excluded_0]/(0.15), label = f'mass = {round(m_index*0.1,2)}', fmt="o")
     #plt.errorbar([-0.15*i for i in range(1, 5)], v_renorms[0,0,:,m_index-excluded_0]/(-0.15), v_sigma_renorms[0,0,:,m_index-excluded_0]/(0.15), label = f'mass = {round(m_index*0.1,2)}. schmidt = {schmidt_cut}', fmt="o")
 plt.axhline(y=1.0, color='black', linestyle='--')
 plt.xlabel(r'$\Delta (g)$', fontsize = 15)
@@ -163,7 +167,7 @@ plt.show()
 
 
 for m_index in range(1, 7):
-    plt.errorbar([-0.15*i for i in range(1, 5)], mass_renorms[0,0,:,m_index-excluded_0]/(m_index*0.1), mass_sigma_renorms[0,0,:,m_index-excluded_0]/(m_index*0.1), label = f'mass = {round(m_index*0.1,2)}', fmt="o")
+    plt.errorbar([-0.15*i for i in range(1, delta_g_range)], mass_renorms[0,0,:,m_index-excluded_0]/(m_index*0.1), mass_sigma_renorms[0,0,:,m_index-excluded_0]/(m_index*0.1), label = f'mass = {round(m_index*0.1,2)}', fmt="o")
     #plt.errorbar([-0.15*i for i in range(1, 5)], mass_renorms[0,0,:,m_index-excluded_0]/(m_index*0.1), mass_sigma_renorms[0,0,:,m_index-excluded_0]/(m_index*0.1), label = f'mass = {round(m_index*0.1,2)}. schmidt = {schmidt_cut}', fmt="o")
 plt.axhline(y=1.0, color='black', linestyle='--')
 plt.xlabel(r'$\Delta (g)$', fontsize = 15)
@@ -174,7 +178,7 @@ plt.legend(loc='lower right')
 plt.show()
 
 for m_index in range(1, 7):
-    plt.errorbar([-0.15*i for i in range(1, 5)], c_renorms[0,0,:,m_index-excluded_0], c_sigma_renorms[0,0,:,m_index-excluded_0], label = f'mass = {round(m_index*0.1,2)}', fmt="o")
+    plt.errorbar([-0.15*i for i in range(1, delta_g_range)], c_renorms[0,0,:,m_index-excluded_0], c_sigma_renorms[0,0,:,m_index-excluded_0], label = f'mass = {round(m_index*0.1,2)}', fmt="o")
     #plt.errorbar([-0.15*i for i in range(1, 5)], c_renorms[0,0,:,m_index-excluded_0], c_sigma_renorms[0,0,:,m_index-excluded_0], label = f'mass = {round(m_index*0.1,2)}. schmidt = {schmidt_cut}', fmt="o")
 plt.axhline(y=1.0, color='black', linestyle='--')
 plt.xlabel(r'$\Delta (g)$', fontsize = 15)

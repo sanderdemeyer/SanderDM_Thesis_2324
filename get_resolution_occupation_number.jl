@@ -8,7 +8,7 @@ using Plots
 using LaTeXStrings
 using Random
 
-include("SanderDM_Thesis_2324/get_occupation_number_matrices.jl")
+include("get_occupation_number_matrices.jl")
 
 function spatial_ramping_S(i, i_middle, κ)
     value = 1 - 1/(1+exp(2*κ*(i-i_middle)))
@@ -35,6 +35,7 @@ end
 L = 200
 m = 0.3
 Delta_g = 0.0
+v = 0.0
 RAMPING_TIME = 5
 dt = 0.01
 v_max = 1.5
@@ -58,8 +59,18 @@ x₀ = div(L,2)
 
 m_eff = m*0.825
 
+spin = 1//2
+pspace = U1Space(i => 1 for i in (-spin):spin)
+unit_tensor = TensorMap([1.0+0.0im 0.0+0.0im; 0.0+0.0im 1.0+0.0im], pspace, pspace)
+H_unit = @mpoham sum((unit_tensor){i} for i in vertices(InfiniteChain(2)))
+H = get_thirring_hamiltonian_symmetric(m, Delta_g, v)
+
 (X_finer_L, occ_L) = get_occupation_number_matrices_left_moving(mps, N, m, σ, x₀)
 (X_finer_R, occ_R) = get_occupation_number_matrices_right_moving(mps, N, m, σ, x₀)
+(X_finer_en, energy_L) = get_energy_matrices_right_moving(mps, H, N, m, σ, x₀)
+(X_finer_new, energy_L_new) = get_energy_matrices_right_moving(mps, H_unit, N, m, σ, x₀)
+
+theoretical_energies = [sqrt(m^2+sin(k)^2) for k in X_finer_L]
 # occ_number_data_eff = get_occupation_number_matrices(mps, L, m_eff, σ, x₀; V = "old")
 
 # for i = div(N,2)-5:div(N,2)+5

@@ -19,13 +19,13 @@ function theoretical_maximum(m, c)
 end
 
 am_tilde_0 = 0.3
-Delta_g = -0.45
+Delta_g = 0.0
 v = 0.0
 trunc = 3.0
 
-v_eff = v_renorms[string(am_tilde_0)][string(Delta_g)] * v
-am_tilde_0_eff = mass_renorms[string(am_tilde_0)][string(Delta_g)] * am_tilde_0
-c_eff = c_renorms[string(am_tilde_0)][string(Delta_g)] * am_tilde_0
+# v_eff = v_renorms[string(am_tilde_0)][string(Delta_g)] * v
+# am_tilde_0_eff = mass_renorms[string(am_tilde_0)][string(Delta_g)] * am_tilde_0
+# c_eff = c_renorms[string(am_tilde_0)][string(Delta_g)] * am_tilde_0
 
 
 # name =  "SanderDM_Thesis_2324/Dispersion_Delta_m_$(am_tilde_0)_delta_g_$(Delta_g)_v_$(v)_trunc_$(trunc)_all_sectors"
@@ -38,7 +38,6 @@ c_eff = c_renorms[string(am_tilde_0)][string(Delta_g)] * am_tilde_0
 
 data_points = 35
 k_values = LinRange(-bounds_k, bounds_k,data_points)
-k_values = LinRange()
 dk = 2*bounds_k/(data_points-1)
 
 energies_real = [real(e) for e in energies]
@@ -68,4 +67,8 @@ for j = 1:3
     end
     println("max_der = $(max_derivative) for i = $(max_index)")
 end
-println("theoretical max is $(theoretical_maximum(am_tilde_0,1.0))")
+
+println([(Es[1][i+1]-Es[1][i])/dk for i = 1:length(Es[1])-1])
+
+println("theoretical max for c = 1 is $(theoretical_maximum(am_tilde_0,1))")
+println("theoretical max for renormalized c is $(theoretical_maximum(am_tilde_0,c_renorms[string(am_tilde_0)][string(-0.44999999999999996)]))")

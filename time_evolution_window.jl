@@ -125,9 +125,9 @@ t_end = dt*max_time_steps
 am_tilde_0 = 1.0
 Delta_g = 0.0 # voor kleinere g, betere fit op dispertierelatie. Op kleinere regio fitten. Probeer voor delta_g = 0 te kijken of ik exact v of -v kan fitten in de dispertierelatie
 v = 0.0
-v_max = 2.0
+v_max = 1.5
 
-FL = false
+FL = false # fix left
 
 RAMPING_TIME = 5
 f(t) = min(v_max, t/RAMPING_TIME)

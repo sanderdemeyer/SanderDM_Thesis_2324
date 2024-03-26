@@ -11,7 +11,7 @@ function get_energy(k, m, v)
     return (v/2*sin(k) + sqrt(m^2 + sin(k/2)^2), v/2*sin(k) - sqrt(m^2 + sin(k/2)^2))
 end
 
-mass = 0.3
+mass = 0.03
 Delta_g = 0.0
 v = 0.0
 
@@ -36,7 +36,21 @@ end
 
 H = H + adjoint(H)
 
+(V₊,V₋) = V_matrix(X, mass)
+gaussian = gaussian_array(X, k, σ, x₀)
 
+D = adjoint(V₊) * H * (V₊)
+for i = 1:N
+    println(D[i,i])
+end
+
+V = hcat(V₊,V₋)
+D = adjoint(V) * H * V
+for i = 1:2*N
+    println(D[i,i])
+end
+
+break
 
 # for i = 1:2*N
 #     for j = 1:2*N
