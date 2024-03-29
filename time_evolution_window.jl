@@ -10,13 +10,10 @@ using Statistics
 # include(raw"C:\Users\Sande\Documents\School\0600 - tweesis\Code\MPSKitModels.jl\src\MPSKitModels.jl")
 
 include("get_thirring_hamiltonian_symmetric_separate.jl")
-include("get_thirring_hamiltonian_symmetric.jl")
 include("get_thirring_hamiltonian_window.jl")
 include("get_groundstate.jl")
 include("get_occupation_number_matrices.jl")
 
-
-saving_time = 1.0
 
 function spatial_ramping_lin(i, i_start, i_end)
     if i < i_start
@@ -41,55 +38,18 @@ function spatial_ramping_S(i, i_middle, κ)
     return value
 end
 
-function my_finalize(t, Ψ, H, envs, name, Es, Exp_Zs)
-    # if (t == frequency_of_saving*dt)
-    #     jldopen(name, "a") do file
-    #         mygroup = JLD2.Group(file, "MPSs")
-    #         mygroup2 = JLD2.Group(file, "Es")
-    #         mygroup["$(t)"] = copy(Ψ)
-    #         mygroup2["$(t)"] = expectation_value(Ψ, H(t), envs)
-    #     end
-    println("------------------------")
-    println("t = $(t)")
-    println(expectation_value(Ψ, H(t),envs)) # h(t)
-    push!(Es, expectation_value(Ψ, H(t),envs))
-    push!(Exp_Zs, expectation_value(Ψ.middle, HSz))
+function my_finalize(t, Ψ, H, envs, name)
     if ((t) % (frequency_of_saving*dt) == 0.0)
         println("Currently saving for t = $(t)")
-        # jldopen(name, "a") do file
-        #     mygroup["$(t)"] = copy(Ψ)
-        #     mygroup2["$(t)"] = expectation_value(Ψ, H(t), envs)
-        # end
-        
-        jldopen(name, "a") do file
-            file["MPSs/$(t)"] = copy(Ψ)
-            file["Es/$(t)"] = expectation_value(Ψ, H(t),envs) # h(t)
+        if !isfile(name)
+            println("File not found")
         end
-
-        # JLD2.@jld_strict begin
-        #     file = jldopen(name, true, true, false, true)
-        
-        #     file["MPSs/$(t)"] = copy(Ψ)
-        #     file["Es/$(t)"] = expectation_value(Ψ, H(t), envs)
-        
-        #     close(file)
-        # end
-        
-        # jldopen(name, "a") do file
-        #     file["MPSs/$(t)"] = copy(Ψ)
-        #     file["Es/$(t)"] = expectation_value(Ψ, H(t),envs)
-        # end
-        # E = zeros(ComplexF64, N+4)
-        # for op in H(t).ops
-        #     E += expectation_value(Ψ, op)
-        # end
-        # E = expectation_value(Ψ, H(t),envs)
-        # push!(Es, E[3:end-2])
+        @assert (t != 0.0)
+        file = jldopen(name*"$(t).jld2", "w")
+        file["MPSs"] = copy(Ψ)
+        file["Es"] = expectation_value(Ψ, H(t), envs)
+        close(file)
     end
-    # if (t % saving_time == 0.0)
-    #     println("Saving")
-    #     @save "test_window_time_evolution_test_v_sweep_N_$(N)_mass_$(am_tilde_0)_delta_g_$(Delta_g)_ramping_$(RAMPING_TIME)_dt_$(dt)_nrsteps_$(number_of_timesteps)_vmax_$(v_max)_kappa_$(κ)_trunc_$(truncation)_savefrequency_$(frequency_of_saving)" MPSs Es
-    # end
     return (Ψ, envs)
 end
 
@@ -107,46 +67,39 @@ end
 #     push!(energies, expectation_value(Ψ.window, H.middle(t)))
 # end
 
-N = 20 # Number of sites
-D = 10
+N = 70 # Number of sites
+D = 50
 
 @assert N % 2 == 0
 
 i_b = div(2*N,3)
-κ = 1.0
+κ = 0.5
 lijst_ramping = [spatial_ramping_S(i, i_b, κ) for i in 1:N]
 
 # spatial_sweep = i_end-i_start
 
 dt = 0.1
-max_time_steps = 150 #3000 #7000
+max_time_steps = 1500 #3000 #7000
 t_end = dt*max_time_steps
 
-am_tilde_0 = 1.0
+am_tilde_0 = 0.03
 Delta_g = 0.0 # voor kleinere g, betere fit op dispertierelatie. Op kleinere regio fitten. Probeer voor delta_g = 0 te kijken of ik exact v of -v kan fitten in de dispertierelatie
 v = 0.0
 v_max = 1.5
 
-FL = false # fix left
 
 RAMPING_TIME = 5
 f(t) = min(v_max, t/RAMPING_TIME)
 f0(t) = 0.0
 
-truncation = 1.5
+truncation = 2.0
 
 (Hopping_term, Mass_term, Interaction_term, Interaction_v_term, Interaction_v_term_window, Mass_term_window) = get_thirring_hamiltonian_window(1.0, 1.0, 1.0, N, lijst_ramping)
 H_without_v = Hopping_term + am_tilde_0*Mass_term + Delta_g*Interaction_term
 
-H0 = get_thirring_hamiltonian_symmetric(am_tilde_0, Delta_g, v)
-(gs_mps, gs_envs) = get_groundstate(am_tilde_0, Delta_g, v, [5 10], truncation, truncation+3.0; number_of_loops=3)
+(gs_mps, gs_envs) = get_groundstate(am_tilde_0, Delta_g, v, [50 100], truncation, truncation+3.0; number_of_loops=7)
 
-spin = 1//2
-pspace = U1Space(i => 1 for i in (-spin):spin)
-Sz = TensorMap([0.5+0.0im 0.0+0.0im; 0.0+0.0im -0.5+0.0im], pspace, pspace)
-HSz = @mpoham sum(Sz{i} for i in vertices(InfiniteChain(2)))
-
-Ψ = WindowMPS(gs_mps,N; fixleft=FL); # state is a windowMPS
+Ψ = WindowMPS(gs_mps,N); # state is a windowMPS
 t = 0.0
 tobesaved = []
 energies = []
@@ -163,7 +116,7 @@ x₀ = 40
 # energies = zeros(ComplexF64, (N, number_of_timesteps))
 # gs_energies = zeros(ComplexF64, (N, div(number_of_timesteps,frequency_of_VUMPS)+1))
 
-frequency_of_saving = 3
+frequency_of_saving = 50
 
 # Ht_right = LazySum([H_without_v, MultipliedOperator(Interaction_v_term, f)])
 # Ht_mid = LazySum([repeat(H_without_v,div(N,2)), MultipliedOperator(Interaction_v_term_window,f)])
@@ -175,9 +128,7 @@ frequency_of_saving = 3
 H1 = Window(H_without_v, repeat(H_without_v, div(N,2)), H_without_v)
 H2 = Window(Interaction_v_term, Interaction_v_term_window, 0*Interaction_v_term)
 WindowH = LazySum([H1, MultipliedOperator(H2, f)])
-HW = Window(H0, repeat(H0, div(N,2)), H0)
-HW_mass = Window(Mass_term, repeat(Mass_term, div(N,2)), Mass_term)
-WindowH = LazySum([HW, MultipliedOperator(HW_mass,f)])
+
 
 envs = environments(Ψ,WindowH);
 
@@ -187,42 +138,42 @@ WindowMPSs = Vector{FiniteMPS}(undef,div(number_of_timesteps,frequency_of_saving
 # occ_numbers = Vector{Vector{Float64}}(undef,div(number_of_timesteps,frequency_of_saving))
 # Es = zeros(ComplexF64, div(number_of_timesteps,frequency_of_saving), N)
 Es = []
-Exp_Zs = []
-
 occ_numbers = zeros(Float64,div(number_of_timesteps,frequency_of_saving), div(N,2)-1)
 
 testt = [0.0]
-if FL
-    name = "mass_window_time_evolution_variables_v_sweep_N_$(N)_mass_$(am_tilde_0)_delta_g_$(Delta_g)_ramping_$(RAMPING_TIME)_dt_$(dt)_nrsteps_$(number_of_timesteps)_vmax_$(v_max)_kappa_$(κ)_trunc_$(truncation)_savefrequency_$(frequency_of_saving)_FL"
-else
-    name = "mass_window_time_evolution_variables_v_sweep_N_$(N)_mass_$(am_tilde_0)_delta_g_$(Delta_g)_ramping_$(RAMPING_TIME)_dt_$(dt)_nrsteps_$(number_of_timesteps)_vmax_$(v_max)_kappa_$(κ)_trunc_$(truncation)_savefrequency_$(frequency_of_saving)"
-end
 
+name = "window_time_evolution_variables_v_sweep_N_$(N)_mass_$(am_tilde_0)_delta_g_$(Delta_g)_ramping_$(RAMPING_TIME)_dt_$(dt)_nrsteps_$(number_of_timesteps)_vmax_$(v_max)_kappa_$(κ)_trunc_$(truncation)_savefrequency_$(frequency_of_saving)"
 
 if isfile(name*".jld2")
     println("Warning - file already exists -- appending with new")
-    name = name * "_new"
+    count_files = 1
+    while isfile(name*"_new$(count_files).jld2")
+        global count_files
+        count_files += 1
+    end
+    name = name * "_new$(count_files)"
 end
-name = name * ".jld2"
-if (isfile(name))
-    println("new also exists already, aborting!")
-    @assert 0 == 1
-end
+name = name * "/"
+# name = name * ".jld2"
 
-Es = []
+
 left_alg = right_alg = TDVP()
-middle_alg =  TDVP2(; trscheme=truncdim(D));
+# middle_alg =  TDVP2(; trscheme=truncdim(D));
+middle_alg =  TDVP2(; trscheme=truncbelow(10^(-truncation)));
 alg = WindowTDVP(;left=left_alg,middle=middle_alg,right=right_alg,
-            finalize=(t, Ψ, H, envs) -> my_finalize(t, Ψ, H, envs, name, Es, Exp_Zs));
+            finalize=(t, Ψ, H, envs) -> my_finalize(t, Ψ, H, envs, name));
 t_span = 0:dt:t_end
 
-# jldopen(name, "a") do file
-#     file["MPSs/$(0.0)"] = copy(Ψ)
-# end
+if !isdir(name)
+    mkdir(name)
+end
 
-(Ψ, envs) = time_evolve!(Ψ, WindowH, t_span, alg, envs; verbose=true);
+file = jldopen(name*"0.0.jld2", "w")
+file["MPSs"] = copy(Ψ)
+file["Es"] = expectation_value(Ψ, WindowH(t), envs)
+close(file)
 
-println("done")
 
-@save name Es
-@save "mass_test_window_time_evolution_test_v_sweep_N_$(N)_mass_$(am_tilde_0)_delta_g_$(Delta_g)_ramping_$(RAMPING_TIME)_dt_$(dt)_nrsteps_$(number_of_timesteps)_vmax_$(v_max)_kappa_$(κ)_trunc_$(truncation)_savefrequency_$(frequency_of_saving)" Es Exp_Zs
+Ψ, envs = time_evolve!(Ψ, WindowH, t_span, alg, envs; verbose=true);
+
+# @save "test_window_time_evolution_test_v_sweep_N_$(N)_mass_$(am_tilde_0)_delta_g_$(Delta_g)_ramping_$(RAMPING_TIME)_dt_$(dt)_nrsteps_$(number_of_timesteps)_vmax_$(v_max)_kappa_$(κ)_trunc_$(truncation)_savefrequency_$(frequency_of_saving)"
