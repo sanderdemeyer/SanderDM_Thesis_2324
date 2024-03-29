@@ -56,7 +56,10 @@ function final_value(left, right)
     #     println(right[key].codom)
     #     println(right[key].dom)
     # end
-    for (l,r) in [(1,size(left)[1])] #keys(left)
+    # println(keys(left))
+    for (l,r) = [(1,size(left)[1])] #keys(left)
+        # for (l,r) = keys(left) #[(1,size(left)[1])] #keys(left)
+        #     if (l,r) in keys(right)
         key = 1
         # println(key)
         # println(typeof(left))
@@ -72,6 +75,7 @@ function final_value(left, right)
         final += A
         # final += @tensor left[key][1 2 3 4] * right[key][4 3 2 1]
         # final += @tensor left[key][1 3 4 2] * right[key][2 3 4 1]
+        # end
     end
     # println("all done")
     return final

@@ -7,6 +7,8 @@ using Statistics
 
 include("get_occupation_number_matrices.jl")
 
+println("started")
+
 function get_energy(k, m, v)
     return (v/2*sin(k) + sqrt(m^2 + sin(k/2)^2), v/2*sin(k) - sqrt(m^2 + sin(k/2)^2))
 end
@@ -39,10 +41,21 @@ H = H + adjoint(H)
 (V₊,V₋) = V_matrix(X, mass)
 gaussian = gaussian_array(X, k, σ, x₀)
 
+println("positive")
+
 D = adjoint(V₊) * H * (V₊)
 for i = 1:N
     println(D[i,i])
 end
+
+println("negative")
+
+D2 = adjoint(V₋) * H * (V₋)
+for i = 1:N
+    println(D2[i,i])
+end
+
+break
 
 V = hcat(V₊,V₋)
 D = adjoint(V) * H * V

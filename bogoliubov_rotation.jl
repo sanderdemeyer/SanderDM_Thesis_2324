@@ -58,11 +58,24 @@ truncation = 3.0
 
 @tensor Snew[-1 -2; -3 -4] := S⁻[-4 -2; -3 -1]
 
+Plus_space = U1Space(1 => 1)
+Min_space = U1Space(-1 => 1)
+Triv_space = U1Space(0 => 1)
+S⁺_old = TensorMap([0.0+0.0im 1.0+0.0im; 0.0+0.0im 0.0+0.0im], Triv_space ⊗ pspace, pspace ⊗ Plus_space)
+S⁺ = TensorMap([0.0+0.0im 1.0+0.0im; 0.0+0.0im 0.0+0.0im], Triv_space ⊗ pspace, pspace ⊗ Min_space')
+S⁻ = TensorMap([0.0+0.0im 0.0+0.0im; 1.0+0.0im 0.0+0.0im], Plus_space ⊗ pspace, pspace ⊗ Triv_space)
+
 
 function create_excitation(mps, a, b, qp_state; momentum = 0.0)
-    @load "operators_for_occupation_number" S⁺ S⁻ S_z_symm
-    @tensor Snew[-1 -2; -3 -4] := S⁻[-4 -2; -3 -1]
-
+    # @load "operators_for_occupation_number" S⁺ S⁻ S_z_symm
+    # @tensor Snew[-1 -2; -3 -4] := S⁻[-4 -2; -3 -1]
+    Plus_space = U1Space(1 => 1)
+    Min_space = U1Space(-1 => 1)
+    Triv_space = U1Space(0 => 1)
+    # S⁺_old = TensorMap([0.0+0.0im 1.0+0.0im; 0.0+0.0im 0.0+0.0im], Triv_space ⊗ pspace, pspace ⊗ Plus_space)
+    S⁺ = TensorMap([0.0+0.0im 1.0+0.0im; 0.0+0.0im 0.0+0.0im], Triv_space ⊗ pspace, pspace ⊗ Min_space')
+    # S⁻ = TensorMap([0.0+0.0im 0.0+0.0im; 1.0+0.0im 0.0+0.0im], Plus_space ⊗ pspace, pspace ⊗ Triv_space)
+    
     AL_new = copy(mps.AL)
     AC_new = copy(mps.AC)
     AR_new = copy(mps.AR)
@@ -85,10 +98,10 @@ function create_excitation(mps, a, b, qp_state; momentum = 0.0)
     @tensor should_be_zero[-1; -2] := (VRs[1][-1 1; 2]) * conj(mps.AR[1][-2 2; 1])
     @assert norm(should_be_zero) < 1e-10
 
-    S_space = Tensor(ones, space(Snew)[1])
+    S_space = Tensor(ones, space(S⁺)[1]) # this and the subsequent two lines were Snew instead of S⁺
 
-    @tensor B1[-1 -2; -3 -4] := (a) * mps.AC[1][-1 1; -4] * Snew[2 -2; 1 -3] * conj(S_space[2])
-    @tensor B2[-1 -2; -3 -4] := (b) * mps.AC[2][-1 1; -4] * Snew[2 -2; 1 -3] * conj(S_space[2])
+    @tensor B1[-1 -2; -3 -4] := (a) * mps.AC[1][-1 1; -4] * S⁺[2 -2; 1 -3] * conj(S_space[2])
+    @tensor B2[-1 -2; -3 -4] := (b) * mps.AC[2][-1 1; -4] * S⁺[2 -2; 1 -3] * conj(S_space[2])
 
     t1 = TransferMatrix(mps.AL[1], mps.AR[1])
     t2 = TransferMatrix(mps.AL[2], mps.AR[2])
@@ -201,38 +214,62 @@ function create_excitation(mps, a, b, qp_state; momentum = 0.0)
     =#
 end
 
-Bs_zero = convert(RightGaugedQP, Bs[18])
+Bs_zero = convert(RightGaugedQP, anti_Bs[18])
 
 function get_optimal_rotation(quasiparticle; momentum = 0.0)
     a_best = -5.0
     b_best = -5.0
-    overlap_best = 0.0
+    overlap_best = 1.0
+    theta_points = 50
+    phi_points = 50
 
-    a = 1.0
-    for r = LinRange(0.0, 3.0, 20)
+    overlaps = []
+    # for theta = LinRange(0.0, pi, theta_points)
+    #     println("theta = $(theta/pi) pi")
+    #     # for thetaa = LinRange(0.0, 2*pi, 50)
+    #     for phi = LinRange(0.0, 2*pi, phi_points)
+    #         a = cos(theta)#*exp(im*thetaa)
+    #         b = sin(theta)*exp(im*phi)
+    #         overlap = abs(create_excitation(mps, a, b, quasiparticle; momentum = momentum))
+    #         if overlap < overlap_best
+    #             overlap_best = overlap
+    #             a_best = a
+    #             b_best = b
+    #         end
+    #         push!(overlaps, overlap)
+    #     end
+    # end
+    for r = LinRange(0.0, 3.0, theta_points)
         println("r = $(r)")
-        for theta = LinRange(0.0, 2*pi, 50)
-            b = r*exp(im*theta)
+        # for thetaa = LinRange(0.0, 2*pi, 50)
+        for phi = LinRange(0.0, 2*pi, phi_points)
+            a = 1.0#*exp(im*thetaa)
+            b = r*exp(im*phi)
             norm = sqrt(abs(a)^2 + abs(b)^2)
-            a = a/norm
-            b = b/norm
+            a = a / norm
+            b = b / norm
             overlap = abs(create_excitation(mps, a, b, quasiparticle; momentum = momentum))
-            if overlap > overlap_best
+            if overlap < overlap_best
                 overlap_best = overlap
                 a_best = a
                 b_best = b
             end
+            push!(overlaps, overlap)
         end
     end
     println("Best overlap occurs for a = $(a_best), b = $(b_best)\n Overlap: $(overlap_best)")
-    return (a_best,b_best, overlap_best)
+    return (a_best,b_best, overlap_best, overlaps)
 end
+
+break
+
+k_values = LinRange(-bounds_k, bounds_k,length(Bs))
 
 index = 25
 k = k_values[index]
-qp_state = convert(RightGaugedQP, Bs[index])
+qp_state = convert(RightGaugedQP, anti_Bs[index])
 
-(a, b, overlap) = get_optimal_rotation(qp_state; momentum = -k*2)
+(a, b, overlap, overlaps) = get_optimal_rotation(qp_state; momentum = k)
 
 lambda = -sqrt(mass^2 + (sin(k/2))^2)
 expected = [-1 -exp(-im*k/2)*(mass-lambda)/sin(k/2)]
@@ -248,6 +285,12 @@ bogoliubov_rotation = [a b]
 
 println(norm(dot(V₊, bogoliubov_rotation)))
 println(norm(dot(V₋, bogoliubov_rotation)))
+println(norm(dot(expected, bogoliubov_rotation)))
+
+plt = plot(1:length(overlaps), overlaps)
+ylabel!("|overlap|")
+display(plt)
+
 
 break
 Bs_old = copy(Bs)
