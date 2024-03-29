@@ -1,6 +1,6 @@
 using LinearAlgebra
 # using Base
-# using KrylovKit
+using KrylovKit
 using JLD2
 using TensorKit
 using MPSKitModels, TensorKit, MPSKit
@@ -34,26 +34,52 @@ middle = (-2*im)*Sz
 
 hamiltonian = get_thirring_hamiltonian(mass, Delta_g, v)
 
+N = 40
+k = 1.5
+σ = 2/(sqrt(N*pi))
 
-N = 6
 
-k = 0.4
+N = 40
+
+k = 1.5
 X = [(2*pi)/N*i - pi for i = 0:N-1]
 σ = 0.7
-σ = 8/(sqrt(N*pi))
+σ = 2/(sqrt(N*pi))
 x₀ = div(N,2)
 
 (V₊,V₋) = V_matrix(X, mass)
 gaussian = gaussian_array(X, k, σ, x₀)
 
+gaussian_cut = [abs(e) < 1e-5 ? 0 : e for e in gaussian]
+
 wi = gaussian*adjoint(V₊)
+wi_cut = gaussian_cut*adjoint(V₊)
 
-# plt = plot(1:N, real.(adjoint(gaussian)), label = "gaussian")
-# display(plt)
+plt = plot(X, abs.(adjoint(gaussian)), label = "gaussian", xlabel = "k")
+title!("wavepacket in momentum space")
+display(plt)
 
-# plt = plot(1:2*N, real.(adjoint(wi)), label = "wi")
-# display(plt)
+plt = plot(1:2*N, abs.(adjoint(wi)), label = "wi", xlabel = "site i", ylabel = "wi")
+title!("wi's in real space")
+display(plt)
 
+plt = plot(1:2*N, abs.(adjoint(wi_cut)), label = "wi", xlabel = "site i", ylabel = "wi")
+title!("wi's in real space after applying a cut")
+display(plt)
+
+gaussian_dd = adjoint([e == 25 ? 1 : 0 for e = 1:N])
+wi_dd = gaussian_dd*adjoint(V₊)
+
+plt = plot(1:N, avged(abs.(adjoint(wi_dd))), label = "wi", xlabel = "site i", ylabel = "wi")
+title!("wi's in real space for dirac delta")
+display(plt)
+
+plt = plot(1:2*N, abs.(adjoint(wi_dd)), label = "wi", xlabel = "site i", ylabel = "wi")
+title!("wi's in real space for dirac delta")
+display(plt)
+
+
+break
 
 println("making mps's")
 mps_tensors = []
@@ -102,7 +128,7 @@ display(plt)
 
 Es = []
 
-for i = 1:2
+for i = 1:20
     global Ψ
     global envs
     (Ψ, envs) = time_evolve!(Ψ, hamiltonian, t_span, alg, envs; verbose=true);
@@ -111,6 +137,7 @@ for i = 1:2
     push!(Es, Eafter)
     # plt = plot(1:N, avged(Eafter), label = "i = $(i)")
     # display(plt)
+    @save "SanderDM_Thesis_2324/test_wavepacket_gs_mps_wo_symmetries_trunc_$(truncation)_mass_$(mass)_v_$(v)_Delta_g_$(Delta_g)_N_$(N)_dt_$(dt)_tend_$(t_end)_intermediate" Es
 end
 
 @save "SanderDM_Thesis_2324/test_wavepacket_gs_mps_wo_symmetries_trunc_$(truncation)_mass_$(mass)_v_$(v)_Delta_g_$(Delta_g)_N_$(N)_dt_$(dt)_tend_$(t_end)" Es

@@ -24,18 +24,26 @@ Delta_g = 0.0
 v = 0.0
 
 N = 40
-dt = 0.2
-t_end = 1.0
-k = 1.5
+dt = 0.8
+t_end = 4.0
+k = -1.5
 sigma = 0.178
 
-file = f"SanderDM_Thesis_2324/test_wavepacket_gs_mps_wo_symmetries_trunc_{truncation}_mass_{mass}_v_{v}_Delta_g_{Delta_g}_N_{N}_k_{k}_sigma_{sigma}_dt_{dt}_tend_{t_end}_dict.h5"
+left_moving = False
+
+if left_moving:
+    file = f"SanderDM_Thesis_2324/test_wavepacket_left_moving_gs_mps_wo_symmetries_trunc_{truncation}_mass_{mass}_v_{v}_Delta_g_{Delta_g}_N_{N}_k_{k}_sigma_{sigma}_dt_{dt}_tend_{t_end}_dict.h5"
+else:
+    file = f"SanderDM_Thesis_2324/test_wavepacket_gs_mps_wo_symmetries_trunc_{truncation}_mass_{mass}_v_{v}_Delta_g_{Delta_g}_N_{N}_k_{k}_sigma_{sigma}_dt_{dt}_tend_{t_end}_dict.h5"
+    file = f"SanderDM_Thesis_2324/test_wavepacket_right_moving_gs_mps_wo_symmetries_trunc_{truncation}_mass_{mass}_v_{v}_Delta_g_{Delta_g}_N_{N}_k_{k}_sigma_{sigma}_dt_{dt}_tend_{t_end}_dict.h5"
+
+
 # file = h5py.File(file)
 
 Es = []
 with h5py.File(file, 'r') as f:
     # Read data
-    for i in range(1,8):
+    for i in range(1,6):
         key1_data = f[f"Es{i}"][:]
         Es.append(avged([e[0] for e in key1_data]))
 

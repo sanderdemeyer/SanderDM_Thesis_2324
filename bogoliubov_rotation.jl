@@ -129,89 +129,18 @@ function create_excitation(mps, a, b, qp_state; momentum = 0.0)
     # @tensor X2[-1; -2 -3] := (Bnew2[-1 1; -3 2]) * conj(VRs[2][-2 2; 1])
     Xs = [X1, X2]
 
-    # println("norm of X1 = $(norm(X1))")
-    # println("norm of X2 = $(norm(X2))")
-
     @tensor B1_again[-1 -2; -3 -4] := X1[-1; -3 1] * (VRs[1][1 -4; -2])
     @tensor B2_again[-1 -2; -3 -4] := X2[-1; -3 1] * (VRs[2][1 -4; -2])
 
     @assert norm(B1_again-Bnew1) < 1e-10
     @assert norm(B2_again-Bnew2) < 1e-10
 
-    # qp_right = RightGaugedQP(left_gs, mps, Xs, VRs, momentum)
-    # qp_right = RightGaugedQP(left_gs, mps, Xs, VRs, momentum)
     qp_right = RightGaugedQP(left_gs, right_gs, Xs, VRs, momentum)
-
-    # qp_right = RightGaugedQP(VRs, Xs, left_gs, right_gs)
 
     normalize!(qp_right)
     @assert abs(1-norm(qp_right)) < 1e-10
 
     return dot(qp_right, qp_state)
-    #=
-    return 0
-    #check 
-    @tensor should_be_zero[-1 -2; -3] := B1[1 2; -3 -2] * conj(mps.AL[1][1 2; -1])
-
-    @tensor B1_again[-1 -2; -3 -4] := X1[-1; -3 1] * (VRs[1][1 -4; -2])
-
-    # gauge the Bs
-    w = 1
-    @tensor T[-1 -2; -3 -4] := mps.AR[w][-1 1; -3] * conj(mps.AL[w][-2 1; -4])
-    @tensor T12[-1 -2; -3 -4] := mps.AL[1][-1 1; 2] * mps.AL[2][2 3; -3] * conj(mps.AL[1][-2 1; 4]) * conj(mps.AL[2][4 3; -4])
-    @tensor T21[-1 -2; -3 -4] := mps.AL[2][-1 1; 2] * mps.AL[1][2 3; -3] * conj(mps.AL[2][-2 1; 4]) * conj(mps.AL[1][4 3; -4])
-
-    unit_12 = Tensor(ones, T12.codom ⊗ conj(T12.dom[1]) ⊗ conj(T12.dom[2]))
-    unit_21 = Tensor(ones, T21.codom ⊗ conj(T21.dom[1]) ⊗ conj(T21.dom[2]))
-    @tensor unit_12_new[-1 -2; -3 -4] := unit_12[-1 -2 -3 -4]
-    @tensor unit_21_new[-1 -2; -3 -4] := unit_21[-1 -2 -3 -4]
-
-    stm12 = SumTransferMatrix([T12 unit_21])
-
-    # XL, convhist_L = linsolve(to_invert12, RHS12, maxiter=100)
-    XL, convhist_L = linsolve(x -> one_minus_tm(x, T21), RHS21, maxiter=1000, tol = 1e-14)
-    XR, convhist_R = linsolve(x -> one_minus_tm(x, T12), RHS12, maxiter=1000, tol = 1e-14)
-
-    to_invert12 = unit_12_new - T12
-    to_invert21 = unit_21_new - T21
-
-
-    inverse12 = pinv(to_invert12)
-    inverse21 = pinv(to_invert21)
-
-    inverse12 = pinv(T12)
-    inverse21 = pinv(T21)
-
-
-
-    # @tensor RHS12[-1 -2; -3] := B1[-1 1; -3 2] * conj(mps.AR[1][-2 1; 2]) + mps.AL[1][-1 1; 2] * B2[2 3; -3 4] * conj(mps.AR[1][-2 1; 5]) * conj(mps.AR[2][5 3; 4])
-    # @tensor RHS21[-1 -2; -3] := B2[-1 1; -3 2] * conj(mps.AR[2][-2 1; 2]) + mps.AL[2][-1 1; 2] * B1[2 3; -3 4] * conj(mps.AR[2][-2 1; 5]) * conj(mps.AR[1][5 3; 4])
-
-
-    try_unit = Tensor(ones, B1.dom[2] ⊗ B1.codom[2] ⊗ B1.dom[2])
-    T_unit21 = TransferMatrix(try_unit, try_unit)
-    XLstart = Tensor(ones, B1.dom[2] ⊗ B1.dom[2] ⊗ B1.dom[1])
-
-    # XL, convhist_L = linsolve([to_invert21], RHS21, maxiter=100)
-    # XR, convhist_R = linsolve(T12, RHS12, maxiter=100)    
-
-    # XL = linsolve(to_invert12, RHS12)
-
-    # @tensor test_whether_inverse12[-1 -2; -3 -4] := to_invert12[-1 -2; 1 2] * inverse12[1 2; -3 -4]
-    # @tensor test_whether_inverse12[-1 -2; -3 -4] := inverse12[-1 -2; 1 2] * to_invert12[1 2; -3 -4]
-    # @tensor test_whether_inverse12[-1 -2; -3 -4] := to_invert12[-1 -2; 1 2] * conj(to_invert12[2 1; -3 -4])
-    # println(norm(test_whether_inverse12))
-    # # println(fjdskmfkdsqm)
-
-    # @tensor XR[-1 -3; -2] := inverse12[-1 -2; 1 2] * RHS12[1 -3; 2]
-    # @tensor XL[-1 -3; -2] := inverse21[-1 -2; 1 2] * RHS21[1 -3; 2]
-
-
-    # qp_right = RightGaugedQP(left_gs, right_gs, Xs, VRs, momentum)
-    qp_right = RightGaugedQP(left_gs, mps, Xs, VRs, momentum)
-
-    return dot(qp_right, qp_state)
-    =#
 end
 
 Bs_zero = convert(RightGaugedQP, anti_Bs[18])
@@ -271,7 +200,7 @@ qp_state = convert(RightGaugedQP, anti_Bs[index])
 
 (a, b, overlap, overlaps) = get_optimal_rotation(qp_state; momentum = k)
 
-lambda = -sqrt(mass^2 + (sin(k/2))^2)
+lambda = sqrt(mass^2 + (sin(k/2))^2)
 expected = [-1 -exp(-im*k/2)*(mass-lambda)/sin(k/2)]
 expected = expected/norm(expected)
 
