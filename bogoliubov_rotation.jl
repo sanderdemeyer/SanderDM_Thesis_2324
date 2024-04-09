@@ -41,6 +41,13 @@ function one_minus_tm(v, tm)
     return v - tm(v)
 end
 
+function one_minus_tm_new(v, AL1, AL2, AR1, AR2)
+    @tensor extra_term[-1 -2; -3] := AL1[-1 1; 2] * AL2[2 4; 5] * conj(AR1[-3 1; 3]) * conj(AR2[3 4; 6]) * v[5 -2; 6]
+    return v - extra_term
+    # return v - tm(v)
+    # return v - transfer_left(tm, v)
+end
+
 function transpose_tail(t::AbstractTensorMap) # make TensorMap{S,1,N₁+N₂-1}
     I1 = TensorKit.codomainind(t)
     I2 = TensorKit.domainind(t)
@@ -58,6 +65,8 @@ truncation = 3.0
 
 @tensor Snew[-1 -2; -3 -4] := S⁻[-4 -2; -3 -1]
 
+spin = 1//2
+pspace = U1Space(i => 1 for i in (-spin):spin)
 Plus_space = U1Space(1 => 1)
 Min_space = U1Space(-1 => 1)
 Triv_space = U1Space(0 => 1)
@@ -93,8 +102,6 @@ function create_excitation(mps, a, b, qp_state; momentum = 0.0)
 
     VRs = [adjoint(leftnull(adjoint(v))) for v in transpose_tail.(right_gs.AR)]
 
-    @tensor A[-1; -2] := VRs[1][-1 2; 3] * conj(VRs[1][-2 2; 3])
-
     @tensor should_be_zero[-1; -2] := (VRs[1][-1 1; 2]) * conj(mps.AR[1][-2 2; 1])
     @assert norm(should_be_zero) < 1e-10
 
@@ -105,14 +112,20 @@ function create_excitation(mps, a, b, qp_state; momentum = 0.0)
 
     t1 = TransferMatrix(mps.AL[1], mps.AR[1])
     t2 = TransferMatrix(mps.AL[2], mps.AR[2])
+    # t1 = TensorKit.flip(t1)
+    # t2 = TensorKit.flip(t2)
     T12 = t1*t2
     T21 = t2*t1
 
     @tensor RHS12[-1 -3; -2] := B1[-1 1; -3 2] * conj(mps.AR[1][-2 1; 2]) + mps.AL[1][-1 1; 2] * B2[2 3; -3 4] * conj(mps.AR[1][-2 1; 5]) * conj(mps.AR[2][5 3; 4])
     @tensor RHS21[-1 -3; -2] := B2[-1 1; -3 2] * conj(mps.AR[2][-2 1; 2]) + mps.AL[2][-1 1; 2] * B1[2 3; -3 4] * conj(mps.AR[2][-2 1; 5]) * conj(mps.AR[1][5 3; 4])
+    # @tensor RHS12[-3 -2; -1] := B1[-1 1; -3 2] * conj(mps.AR[1][-2 1; 2]) + mps.AL[1][-1 1; 2] * B2[2 3; -3 4] * conj(mps.AR[1][-2 1; 5]) * conj(mps.AR[2][5 3; 4])
+    # @tensor RHS21[-3 -2; -1] := B2[-1 1; -3 2] * conj(mps.AR[2][-2 1; 2]) + mps.AL[2][-1 1; 2] * B1[2 3; -3 4] * conj(mps.AR[2][-2 1; 5]) * conj(mps.AR[1][5 3; 4])
 
     XL, convhist_L = linsolve(x -> one_minus_tm(x, T21), RHS21, maxiter=1000, tol = 1e-14)
     XR, convhist_R = linsolve(x -> one_minus_tm(x, T12), RHS12, maxiter=1000, tol = 1e-14)
+    # XL, convhist_L = linsolve(x -> one_minus_tm_new(x, mps.AL[2], mps.AL[1], mps.AR[2], mps.AR[1]), RHS21, maxiter=1000, tol = 1e-14)
+    # XR, convhist_R = linsolve(x -> one_minus_tm_new(x, mps.AL[1], mps.AL[2], mps.AR[1], mps.AR[2]), RHS12, maxiter=1000, tol = 1e-14)
 
     @tensor Bnew1[-1 -2; -3 -4] := B1[-1 -2; -3 -4] + mps.AL[1][-1 -2; 1] * XL[1 -3; -4] - XR[-1 -3; 1] * mps.AR[1][1 -2; -4]
     @tensor Bnew2[-1 -2; -3 -4] := B2[-1 -2; -3 -4] + mps.AL[2][-1 -2; 1] * XR[1 -3; -4] - XL[-1 -3; 1] * mps.AR[2][1 -2; -4] 
@@ -145,17 +158,49 @@ end
 
 Bs_zero = convert(RightGaugedQP, anti_Bs[18])
 
-function get_optimal_rotation(quasiparticle; momentum = 0.0)
-    a_best = -5.0
-    b_best = -5.0
-    overlap_best = 1.0
-    theta_points = 50
-    phi_points = 50
+function get_optimal_rotation(quasiparticle; momentum = 0.0, theta_points = 10, phi_points = 10)
+    a_min = -5.0
+    b_min = -5.0
+    a_max = -5.0
+    b_max = -5.0
+    overlap_min = 1.0
+    overlap_max = 0.0
 
+    overlap10 = abs(create_excitation(mps, 1.0, 0.0, quasiparticle; momentum = momentum))
+    overlap01 = abs(create_excitation(mps, 0.0, 1.0, quasiparticle; momentum = momentum))
+    println(overlap10)
+    println(overlap01)
     overlaps = []
+    for theta = LinRange(0.0, pi, theta_points)
+        println("theta = $(theta/pi) pi")
+        # for thetaa = LinRange(0.0, 2*pi, 50)
+        overlaps_theta = []
+        for phi = LinRange(0.0, 2*pi, phi_points)
+            a = cos(theta)#*exp(im*thetaa)
+            b = sin(theta)*exp(im*phi)
+            if abs(norm([a b])-1.0) > 1e-10
+                println("for theta = $(theta), phi = $(phi), norm = $(abs(norm([a b])-1.0))")
+            end
+            # overlap = abs(a*overlap10 + b*overlap01)
+            overlap = abs(create_excitation(mps, a, b, quasiparticle, momentum = momentum))
+            if overlap < overlap_min
+                overlap_min = overlap
+                a_min = a
+                b_min = b
+            end
+            if overlap > overlap_max
+                overlap_max = overlap
+                a_max = a
+                b_max = b
+            end
+            push!(overlaps_theta, overlap)
+        end
+        push!(overlaps, overlaps_theta)
+    end
     # for theta = LinRange(0.0, pi, theta_points)
     #     println("theta = $(theta/pi) pi")
     #     # for thetaa = LinRange(0.0, 2*pi, 50)
+    #     overlaps_theta = []
     #     for phi = LinRange(0.0, 2*pi, phi_points)
     #         a = cos(theta)#*exp(im*thetaa)
     #         b = sin(theta)*exp(im*phi)
@@ -165,44 +210,73 @@ function get_optimal_rotation(quasiparticle; momentum = 0.0)
     #             a_best = a
     #             b_best = b
     #         end
+    #         push!(overlaps_theta, overlap)
+    #     end
+    #     push!(overlaps, overlaps_theta)
+    # end
+    # for r = LinRange(0.0, 3.0, theta_points)
+    #     println("r = $(r)")
+    #     # for thetaa = LinRange(0.0, 2*pi, 50)
+    #     for phi = LinRange(0.0, 2*pi, phi_points)
+    #         a = 1.0#*exp(im*thetaa)
+    #         b = r*exp(im*phi)
+    #         norm = sqrt(abs(a)^2 + abs(b)^2)
+    #         a = a / norm
+    #         b = b / norm
+    #         overlap = abs(create_excitation(mps, a, b, quasiparticle; momentum = momentum))
+    #         if overlap < overlap_best
+    #             overlap_best = overlap
+    #             a_best = a
+    #             b_best = b
+    #         end
     #         push!(overlaps, overlap)
     #     end
     # end
-    for r = LinRange(0.0, 3.0, theta_points)
-        println("r = $(r)")
-        # for thetaa = LinRange(0.0, 2*pi, 50)
-        for phi = LinRange(0.0, 2*pi, phi_points)
-            a = 1.0#*exp(im*thetaa)
-            b = r*exp(im*phi)
-            norm = sqrt(abs(a)^2 + abs(b)^2)
-            a = a / norm
-            b = b / norm
-            overlap = abs(create_excitation(mps, a, b, quasiparticle; momentum = momentum))
-            if overlap < overlap_best
-                overlap_best = overlap
-                a_best = a
-                b_best = b
-            end
-            push!(overlaps, overlap)
-        end
-    end
-    println("Best overlap occurs for a = $(a_best), b = $(b_best)\n Overlap: $(overlap_best)")
-    return (a_best,b_best, overlap_best, overlaps)
+    println("Minimal overlap occurs for a = $(a_min), b = $(b_min)\n Overlap: $(overlap_min)")
+    println("Maximal overlap occurs for a = $(a_max), b = $(b_max)\n Overlap: $(overlap_max)")
+    return (a_min, b_min, a_max, b_max, overlap_min, overlap_max, overlaps)
 end
-
-break
 
 k_values = LinRange(-bounds_k, bounds_k,length(Bs))
 
-index = 25
+index = 18
 k = k_values[index]
 qp_state = convert(RightGaugedQP, anti_Bs[index])
+qp_state0 = convert(RightGaugedQP, anti_Bs[18])
 
-(a, b, overlap, overlaps) = get_optimal_rotation(qp_state; momentum = k)
+lambda = sqrt(mass^2+sin(k/2)^2)
+a1 = exp(im*k/2)
+b1 = -sin(k/2)/(mass-lambda)
+norm1 = sqrt(abs(a1)^2+abs(b1)^2)
+a2 = exp(im*k/2)
+b2 = -sin(k/2)/(mass+lambda)
+norm2 = sqrt(abs(a2)^2+abs(b2)^2)
+# a2 = 1.0
+# b2 = 0.0
+# norm2 = 1.0
+
+# println(abs(create_excitation(mps, a1/norm1, b1/norm1, qp_state, momentum = -k)))
+# println(abs(create_excitation(mps, a2/norm2, b2/norm2, qp_state, momentum = -k)))
+# println(abs(create_excitation(mps, a1/norm1, b1/norm1, qp_state, momentum = k)))
+# println(abs(create_excitation(mps, a2/norm2, b2/norm2, qp_state, momentum = k)))
+# println(abs(create_excitation(mps, a1/norm1, b1/norm1, qp_state, momentum = -2*k)))
+# println(abs(create_excitation(mps, a2/norm2, b2/norm2, qp_state, momentum = -2*k)))
+# println(abs(create_excitation(mps, a1/norm1, b1/norm1, qp_state, momentum = 2*k)))
+# println(abs(create_excitation(mps, a2/norm2, b2/norm2, qp_state, momentum = 2*k)))
+
+theta_points = 50
+phi_points = 50
+
+println("Started with optimalization")
+(a_min, b_min, a_max, b_max, overlap_min, overlap_max, overlaps) = get_optimal_rotation(qp_state; momentum = -k, theta_points=theta_points,phi_points=phi_points)
 
 lambda = sqrt(mass^2 + (sin(k/2))^2)
-expected = [-1 -exp(-im*k/2)*(mass-lambda)/sin(k/2)]
-expected = expected/norm(expected)
+if k == 0.0
+    expected = [1.0 0.0]
+else
+    expected = [-1 -exp(-im*k/2)*(mass-lambda)/sin(k/2)]
+    expected = expected/norm(expected)
+end
 
 A = [mass -(im/2)*(1-exp(im*k)); (im/2)*(1-exp(-im*k)) -mass]
 eigen_result = eigen(A)
@@ -210,13 +284,21 @@ eigenvectors_matrix = eigen_result.vectors
 V₊ = eigenvectors_matrix[:,1]
 V₋ = eigenvectors_matrix[:,2]
 
-bogoliubov_rotation = [a b]
+bogoliubov_rotation = [a_min b_min]
 
 println(norm(dot(V₊, bogoliubov_rotation)))
 println(norm(dot(V₋, bogoliubov_rotation)))
 println(norm(dot(expected, bogoliubov_rotation)))
 
-plt = plot(1:length(overlaps), overlaps)
+
+thetas = LinRange(0, pi, theta_points)
+phis = LinRange(0, 2*pi, phi_points)
+
+plt = plot(phis, overlaps[1], label = "theta = $(round(thetas[1],digits=3))")
+for i = 2:length(overlaps)
+    plot!(phis, overlaps[i], label = "theta = $(round(thetas[i],digits=3))")
+end
+xlabel!("phi")
 ylabel!("|overlap|")
 display(plt)
 
