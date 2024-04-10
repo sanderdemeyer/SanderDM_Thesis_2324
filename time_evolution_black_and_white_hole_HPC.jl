@@ -61,7 +61,7 @@ v_max = 1.5
 truncation = 2.0
 
 lijst_ramping = [spatial_ramping_S(i, ib, iw, κ) for i = 1:N]
-f(t) = min(v_max, t/RAMPING_TIME)
+f(t) = sign(v_max)*min(abs(v_max), t/RAMPING_TIME)
 f0(t) = 0.0
 
 
