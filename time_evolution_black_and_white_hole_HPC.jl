@@ -1,3 +1,5 @@
+include("dep_helper.jl")
+
 using LinearAlgebra
 # using Base
 using KrylovKit
@@ -5,7 +7,6 @@ using JLD2
 using TensorKit
 using MPSKitModels, TensorKit, MPSKit
 using Statistics
-using Plots
 
 include("get_thirring_hamiltonian_symmetric_separate.jl")
 include("get_thirring_hamiltonian_symmetric.jl")
@@ -36,20 +37,20 @@ function my_finalize(t, Ψ, H, envs, name)
     return (Ψ, envs)
 end
 
-N = 100 # Number of sites
-D = 20
+N = 160 # Number of sites
+D = 25
 
 @assert N % 2 == 0
 
 κ = 0.5
 ib = 40
-iw = 60
+iw = 90
 
 
-dt = 1.0
-number_of_timesteps = 20 #3000 #7000
+dt = 0.1
+number_of_timesteps = 5000 #3000 #7000
 t_end = dt*number_of_timesteps
-frequency_of_saving = 1
+frequency_of_saving = 5
 RAMPING_TIME = 5
 
 am_tilde_0 = 0.03
@@ -57,7 +58,7 @@ Delta_g = 0.0 # voor kleinere g, betere fit op dispertierelatie. Op kleinere reg
 v = 0.0
 v_max = 1.5
 
-truncation = 1.5
+truncation = 2.0
 
 lijst_ramping = [spatial_ramping_S(i, ib, iw, κ) for i = 1:N]
 f(t) = min(v_max, t/RAMPING_TIME)
@@ -68,6 +69,7 @@ f0(t) = 0.0
 
 Plus_space = U1Space(1 => 1)
 Min_space = U1Space(-1 => 1)
+trivspace = U1Space(0 => 1)
 S⁺ = TensorMap([0.0+0.0im 1.0+0.0im; 0.0+0.0im 0.0+0.0im], trivspace ⊗ pspace, pspace ⊗ Plus_space)
 S⁻ = TensorMap([0.0+0.0im 0.0+0.0im; 1.0+0.0im 0.0+0.0im], Plus_space ⊗ pspace, pspace ⊗ trivspace)
 S_z_symm = TensorMap([0.5+0.0im 0.0+0.0im; 0.0+0.0im -0.5+0.0im], Plus_space ⊗ pspace, pspace ⊗ Plus_space)
@@ -90,8 +92,8 @@ H_without_v = Hopping_term + am_tilde_0*Mass_term + Delta_g*Interaction_term
 H0 = get_thirring_hamiltonian_symmetric(am_tilde_0, Delta_g, v)
 (gs_mps, gs_envs) = get_groundstate(am_tilde_0, Delta_g, v, [50 100], truncation, truncation+3.0; number_of_loops=3)
 
-gal = MPSKit.calc_galerkin(gs_mps, gs_envs)
-var = variance(gs_mps, H0)
+# gal = MPSKit.calc_galerkin(gs_mps, gs_envs)
+# var = variance(gs_mps, H0)
 
 # Some stuff for postprocessing
 spin = 1//2
@@ -108,7 +110,7 @@ WindowH = LazySum([H1, MultipliedOperator(H2, f)])
 envs = environments(Ψ, WindowH);
 
 # Stuff for files and directories
-name = "bw_hole_trivial_time_evolution_variables_N_$(N)_mass_$(am_tilde_0)_delta_g_$(Delta_g)_ramping_$(RAMPING_TIME)_dt_$(dt)_nrsteps_$(number_of_timesteps)_vmax_$(v_max)_kappa_$(κ)_trunc_$(truncation)_savefrequency_$(frequency_of_saving)"
+name = "bw_hole_trivial_time_evolution_variables_N_$(N)_mass_$(am_tilde_0)_delta_g_$(Delta_g)_ramping_$(RAMPING_TIME)_dt_$(dt)_nrsteps_$(number_of_timesteps)_vmax_$(v_max)_kappa_$(κ)_trunc_$(truncation)_D_$(D)_savefrequency_$(frequency_of_saving)"
 
 if isfile(name*".jld2")
     println("Warning - file already exists -- appending with new")
@@ -126,7 +128,7 @@ end
 
 # Algorithms for time evolution
 left_alg = right_alg = TDVP()
-middle_alg =  TDVP();
+middle_alg =  TDVP2(; trscheme=truncdim(D));
 alg = WindowTDVP(;left=left_alg,middle=middle_alg,right=right_alg,
             finalize=(t, Ψ, H, envs) -> my_finalize(t, Ψ, H, envs, name));
 t_span = 0:dt:t_end
@@ -147,16 +149,3 @@ println("done")
 # Ψ = WindowMPS(gs_mps,N; fixleft=true, fixright=true); # state is a windowMPS
 # env = environments(Ψ.middle, WindowH.middle);
 # (Ψ, envs) = time_evolve!(Ψ.middle, WindowH.middle, 0:1.0:2.0, TDVP(), env; verbose=true);
-
-Exp_Sz = expectation_value(Ψ, Sz)
-energies = expectation_value(Ψ, H0)
-
-function avged(Es)
-    return real.([(Es[2*i+1]+Es[2*i+2])/2 for i = 0:div(length(Es),2)-1])
-end
-
-E0 = real(mean(expectation_value(gs_mps, H0)))
-plt = plot(1:div(N,2), avged(energies))
-hline!([E0])
-display(plt)
-
