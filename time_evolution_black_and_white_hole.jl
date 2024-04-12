@@ -36,7 +36,7 @@ function my_finalize(t, Ψ, H, envs, name)
     return (Ψ, envs)
 end
 
-N = 100 # Number of sites
+N = 20 # Number of sites
 D = 20
 
 @assert N % 2 == 0
@@ -59,15 +59,19 @@ v_max = 1.5
 
 truncation = 1.5
 
-lijst_ramping = [spatial_ramping_S(i, ib, iw, κ) for i = 1:N]
+lijst_ramping = [0*spatial_ramping_S(i, ib, iw, κ) for i = 1:N]
 f(t) = sign(v_max)*min(abs(v_max), t/RAMPING_TIME)
 f0(t) = 0.0
 
 
 (Hopping_term, Mass_term, Interaction_term, Interaction_v_term, Interaction_v_term_window, Mass_term_window) = get_thirring_hamiltonian_window(1.0, 1.0, 1.0, N, lijst_ramping)
 
+
+spin = 1//2
+pspace = U1Space(i => 1 for i in (-spin):spin)
 Plus_space = U1Space(1 => 1)
 Min_space = U1Space(-1 => 1)
+trivspace = U1Space(0 => 1)
 S⁺ = TensorMap([0.0+0.0im 1.0+0.0im; 0.0+0.0im 0.0+0.0im], trivspace ⊗ pspace, pspace ⊗ Plus_space)
 S⁻ = TensorMap([0.0+0.0im 0.0+0.0im; 1.0+0.0im 0.0+0.0im], Plus_space ⊗ pspace, pspace ⊗ trivspace)
 S_z_symm = TensorMap([0.5+0.0im 0.0+0.0im; 0.0+0.0im -0.5+0.0im], Plus_space ⊗ pspace, pspace ⊗ Plus_space)
@@ -84,6 +88,8 @@ for i = 1:N
         Interaction_v_term_window[i][k,Interaction_v_term_window.odim] *= lijst_ramping[i]
     end
 end
+
+
 H_without_v = Hopping_term + am_tilde_0*Mass_term + Delta_g*Interaction_term
 
 # Get the groundstate MPS, together with some checks on convergence

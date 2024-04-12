@@ -67,6 +67,8 @@ f0(t) = 0.0
 
 (Hopping_term, Mass_term, Interaction_term, Interaction_v_term, Interaction_v_term_window, Mass_term_window) = get_thirring_hamiltonian_window(1.0, 1.0, 1.0, N, lijst_ramping)
 
+spin = 1//2
+pspace = U1Space(i => 1 for i in (-spin):spin)
 Plus_space = U1Space(1 => 1)
 Min_space = U1Space(-1 => 1)
 trivspace = U1Space(0 => 1)
