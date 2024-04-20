@@ -33,7 +33,7 @@ function correlator(state, O₁, O₂, middle, i::Int, N::Int)
     return G
 end
 
-function final_value(left, right)
+function final_value_old(left, right)
     final = 0.0
     # println("printing the keys")
     # for key in keys(left)
@@ -81,72 +81,54 @@ function final_value(left, right)
     return final
 end
 
-function right_env_below(mps, H, j, envs, O₂, left)
-    # println("in right_env_below")
-    U2 = Tensor(ones, (O₂).dom[2])
-    # r = PeriodicArray{TensorMap{GradedSpace{U1Irrep, TensorKit.SortedVectorDict{U1Irrep, Int64}}, 2, 2, U1Irrep, TensorKit.SortedVectorDict{U1Irrep, Matrix{ComplexF64}}, FusionTree{U1Irrep, 2, 0, 1, Nothing}, FusionTree{U1Irrep, 2, 0, 1, Nothing}}, 6}
-    # r = Vector{TensorMap{GradedSpace{U1Irrep, TensorKit.SortedVectorDict{U1Irrep, Int64}}, 2, 2, U1Irrep, TensorKit.SortedVectorDict{U1Irrep, Matrix{ComplexF64}}, FusionTree{U1Irrep, 2, 0, 1, Nothing}, FusionTree{U1Irrep, 2, 0, 1, Nothing}}}
-    right_env = rightenv(envs, j, mps)
+function final_value(left, right)
+    final = 0.0
+    for (l,r) = [(1,size(left)[1])]
+        key = 1
+        @tensor A = left[l][1 2; 3 4] * right[r][4 3; 2 1]
+        final += A
+    end
+    return final
+end
 
-    r = copy(right_env)
-    # tens = []
-    gvd = copy(left)
+function right_env_below(mps, H, j, envs, O₂)
+    U2 = Tensor(ones, (O₂).dom[2])
+    right_env = rightenv(envs, j, mps)
     tens_new = []
-    tens = PeriodicArray{TensorMap{GradedSpace{U1Irrep, TensorKit.SortedVectorDict{U1Irrep, Int64}}, 2, 2, U1Irrep, TensorKit.SortedVectorDict{U1Irrep, Matrix{ComplexF64}}, FusionTree{U1Irrep, 2, 0, 1, Nothing}, FusionTree{U1Irrep, 2, 0, 1, Nothing}}, size(H[j])[1]}
     for a = 1:size(H[j])[1]
-        r[a] = 0*r[a] # to make sure everything is zero first. If not all values are in j, this is likely to give a space mismatch
         tensors = []
         for b = 1:size(H[j])[2]
             if (a,b) in keys(H[j])
-                # @tensor value[-1 -2; -3 -4 -5 -6 -7 -8 -9] := mps.AR[j][-1 2; 16] * H[j][a,b][-2 4; 2 -7] * O₂[-3 6; 4 -5] * conj(mps.AR[j][-4 6; -8]) * right_env[b][16 -6 -9]
-                # println(O₂.codom)
-                # println(O₂.dom)
                 @tensor value[-1 -3; -2 -4] := mps.AR[j][-1 2; 1] * H[j][a,b][-2 4; 2 3] * O₂[-3 6; 4 5] * U2[5] * conj(mps.AR[j][-4 6; 7]) * right_env[b][1 3; 7]
                 push!(tensors, value)
             end
         end
-        # tens[a] = sum(tensors)
-        # r[a] = sum(tensors)
         push!(tens_new, sum(tensors))
-        gvd[a] = sum(tensors)
     end
     return PeriodicArray(tens_new)
-    # println("type is $(typeof(gvd))")
-    # println(tens_new[1].codom)
-    # println(tens_new[1].dom)
-    # println(gvd[1].codom)
-    # println(gvd[1].dom)
-    # println("that was it")
-    return gvd
-    print(wtf)
+end
 
-    println("type is $(typeof(PeriodicArray{Vector{TensorMap{GradedSpace{U1Irrep, TensorKit.SortedVectorDict{U1Irrep, Int64}}, 2, 2, U1Irrep, TensorKit.SortedVectorDict{U1Irrep, Matrix{ComplexF64}}, FusionTree{U1Irrep, 2, 0, 1, Nothing}, FusionTree{U1Irrep, 2, 0, 1, Nothing}}}}(tens_new)))")
-    fin = PeriodicArray{TensorMap{GradedSpace{U1Irrep, TensorKit.SortedVectorDict{U1Irrep, Int64}}, 2, 2, U1Irrep, TensorKit.SortedVectorDict{U1Irrep, Matrix{ComplexF64}}, FusionTree{U1Irrep, 2, 0, 1, Nothing}, FusionTree{U1Irrep, 2, 0, 1, Nothing}}, 1}(tens)
-    for key in keys(fin)
-        println(key)
-        println(fin[key].codom)
-        println(fin[key].dom)
+function left_env_below(mps, H, j, envs, O₁)
+    U1 = Tensor(ones, (O₁).codom[1])
+    left_env = leftenv(envs, j, mps)
+    tens_new = []
+    for b = 1:size(H[j])[2]
+        tensors = []
+        for a = 1:size(H[j])[1]
+            if (a,b) in keys(H[j])
+                @tensor value[-1 -2; -3 -4] := mps.AC[j][1 2; -4] * H[j][a,b][3 4; 2 -3] * O₁[5 6; 4 -2] * conj(U1[5]) * conj(mps.AC[j][7 6; -1]) * left_env[a][7 3; 1]
+                push!(tensors, value)
+            end
+        end
+        for tens = tensors
+            println("new tensor")
+            println(tens.dom)
+            println(tens.codom)
+        end
+        sum_test = sum(tensors)
+        push!(tens_new, sum(tensors))
     end
-    return tens
-    print(fjdkslqmfjkl)
-    return fin
-
-    # for (j,k) in keys(H[i])
-    #     @tensor value[-1 -2; -3 -4] := mps.AR[i][-1 2; 1] * H[i][j,k][-2 4; 2 3] * O₂[-3 6; 4 5] * U2[5] * conj(mps.AR[i][-4 6; 7]) * right_env[k][1 3; 7]
-    #     # if length(r) == 0
-    #     #     println("for key = ($(j),$(k)), length is 0")
-    #     #     r[j] = value
-    #     if !(j in indices)
-    #         println("for key = ($(j),$(k)), pushing")
-    #         # push!(r, value)
-    #         r[j] = value
-    #         push!(indices, j)
-    #     else
-    #         println("for key = ($(j),$(k)), adding")
-    #         r[j] = r[j] + value
-    #     end
-    # end
-    # return PeriodicArray(r)
+    return PeriodicArray(tens_new)
 end
 
 
@@ -166,6 +148,8 @@ function correlator_tf(state, H, O₁, O₂, middle, i::Int, N::Int)
     # println(typeof(left))
     # left = transfer_left(left_env, H[i], A_above, mps.AC[i])
     value_onsite = 0.0
+    # left_env2 = leftenv(envs, i+1, mps)
+    # right_env2 = rightenv(envs, i+1, mps)
     left_env2 = leftenv(envs, i+1, mps)
     right_env2 = rightenv(envs, i+1, mps)
     # for (j,k) in keys(H[i])
@@ -173,6 +157,7 @@ function correlator_tf(state, H, O₁, O₂, middle, i::Int, N::Int)
     # end
     j = 1
     k = size(H[j])[1]
+    # value_onsite = @tensor left_env2[j][10 5; 1] * mps.AC[i+1][1 2; 13] * O₁[3 4; 2 7] * conj(U1[3]) * H[i+1][j,k][5 6; 4 12] * O₂[7 9; 6 8] * U2[8] * conj(mps.AC[i+1][10 9; 11]) * right_env2[k][13 12; 11]
     value_onsite = @tensor left_env2[j][10 5; 1] * mps.AC[i+1][1 2; 13] * O₁[3 4; 2 7] * conj(U1[3]) * H[i+1][j,k][5 6; 4 12] * O₂[7 9; 6 8] * U2[8] * conj(mps.AC[i+1][10 9; 11]) * right_env2[k][13 12; 11]
     G[i] = value_onsite/2
 
@@ -183,7 +168,7 @@ function correlator_tf(state, H, O₁, O₂, middle, i::Int, N::Int)
         # println("started for j = $(j)")
         # @tensor A_above[-1 -2; -3 -4] := mps.AR[j][-1 1; -4] * O₂[-3 -2; 1 2] * (U2[2])
         # right = TransferMatrix(A_above, H[j], mps.AR[j]) * rightenv(envs, j, mps)
-        right = right_env_below(mps, H, j, envs, O₂, left)
+        right = right_env_below(mps, H, j, envs, O₂)
         # println("printing right")
         # println(right)
         # println(keys(right))
@@ -203,9 +188,182 @@ function correlator_tf(state, H, O₁, O₂, middle, i::Int, N::Int)
     return G
 end
 
+function correlator_tf(state, H, O₁, O₂, middle, i::Int, N::Int)
+    S₁ = (O₁).codom[1]
+    S₂ = (O₂).dom[2]
+
+    G = similar(1:N, scalartype(state))
+    U1 = Tensor(ones, S₁)
+    U2 = Tensor(ones, S₂)
+
+    envs = environments(mps, H)
+    left_env = leftenv(envs, i, mps)
+    right_env = rightenv(envs, i, mps)
+    @tensor A_above[-1 -2; -3 -4] := mps.AC[i][-1 1; -4] * O₁[2 -2; 1 -3] * conj(U1[2])
+    left = left_env * TransferMatrix(A_above, H[i], mps.AC[i])
+    left_env2 = leftenv(envs, i+1, mps)
+    right_env2 = rightenv(envs, i+1, mps)
+    j = 1
+    k = size(H[j])[1]
+    value_onsite = @tensor left_env2[j][10 5; 1] * mps.AC[i+1][1 2; 13] * O₁[3 4; 2 7] * conj(U1[3]) * H[i+1][j,k][5 6; 4 12] * O₂[7 9; 6 8] * U2[8] * conj(mps.AC[i+1][10 9; 11]) * right_env2[k][13 12; 11]
+    G[i] = value_onsite/2
+
+    for j = 1:i-1
+        G[j] = 0.0
+    end
+    return G
+end
+
+function correlator_tf_april(state, H, O₁, O₂, middle, i::Int, N::Int)
+    S₁ = (O₁).codom[1]
+    S₂ = (O₂).dom[2]
+
+    G = similar(1:N, scalartype(state))
+    U1 = Tensor(ones, S₁)
+    U2 = Tensor(ones, S₂)
+
+    envs = environments(mps, H)
+    left_env = leftenv(envs, i, mps)
+    right_env = rightenv(envs, i, mps)
+    @tensor A_above[-1 -2; -3 -4] := mps.AL[i][-1 1; -4] * O₁[2 -2; 1 -3] * conj(U1[2])
+    left = left_env * TransferMatrix(A_above, H[i], mps.AL[i])
+    value_onsite = 0.0
+    # left_env2 = leftenv(envs, i+1, mps)
+    # right_env2 = rightenv(envs, i+1, mps)
+    left_env2 = leftenv(envs, i+1, mps)
+    right_env2 = rightenv(envs, i+1, mps)
+    # for (j,k) in keys(H[i])
+    #     value_onsite += @tensor left_env2[j][10 5; 1] * mps.AC[i+1][1 2; 13] * O₁[3 4; 2 7] * conj(U1[3]) * H[i+1][j,k][5 6; 4 12] * O₂[7 9; 6 8] * U2[8] * conj(mps.AC[i+1][10 9; 11]) * right_env2[k][13 12; 11]
+    # end
+    j = 1
+    k = size(H[j])[1]
+    # value_onsite = @tensor left_env2[j][10 5; 1] * mps.AC[i+1][1 2; 13] * O₁[3 4; 2 7] * conj(U1[3]) * H[i+1][j,k][5 6; 4 12] * O₂[7 9; 6 8] * U2[8] * conj(mps.AC[i+1][10 9; 11]) * right_env2[k][13 12; 11]
+    value_onsite = @tensor left_env2[j][10 5; 1] * mps.AC[i+1][1 2; 13] * O₁[3 4; 2 7] * conj(U1[3]) * H[i+1][j,k][5 6; 4 12] * O₂[7 9; 6 8] * U2[8] * conj(mps.AC[i+1][10 9; 11]) * right_env2[k][13 12; 11]
+    G[i] = value_onsite/2
+
+    for j = 1:i-1
+        G[j] = 0.0
+    end
+    for j = i+1:N
+        println("j = $(j)")
+        # right = right_env_below(mps, H, j, envs, O₂)
+        # right_env = rightenv(envs, j, mps)
+        # tens_new = []
+        # for a = 1:size(H[j])[1]
+        #     tensors = []
+        #     for b = 1:size(H[j])[2]
+        #         if (a,b) in keys(H[j])
+        #             @tensor value[-1 -3; -2 -4] := mps.AR[j][-1 2; 1] * H[j][a,b][-2 4; 2 3] * O₂[-3 6; 4 5] * U2[5] * conj(mps.AR[j][-4 6; 7]) * right_env[b][1 3; 7]
+        #             push!(tensors, value)
+        #         end
+        #     end
+        #     push!(tens_new, sum(tensors))
+        # end
+        util = MPSKit.fill_data!(similar(st.AL[1], space(envs.lw[H.odim, i + 1], 2)), one)
+        U2 = Tensor(ones, (O₂).codom[1])
+        U2 = Tensor(ones, (O₂).dom[2])
+        final = 0.0
+        for index in (H.odim):-1:1
+            @tensor apl[-1 -2; -3] := left[index][7 3; 6 1] * mps.AL[j][1 2; -3] * H[j][index, H.odim][3 4; 2 -2] * O₂[6 8; 4 5] * (U2[5]) * conj(mps.AL[j][7 8; -1])
+            # @tensor apl[-1 -2; -3 -15] := left[index][7 6; 3 1] * mps.AR[j][1 2; -3] * H[j][index, H.odim][3 4; 2 -2] * O₂[6 8; 4 -15]* conj(mps.AR[j][7 8; -1])
+            final += @plansor apl[1 2; 3] * r_LL(mps, j)[3; 1] * conj(util[2])
+        end
+        G[j] = (-1im)*final
+        # G[j] = (-1im)*final_value(left, right)
+
+        # println("done with final_value")
+        @tensor A_middle[-1 -2; -3] := mps.AL[j][-1 1; -3] * middle[-2; 1]
+        # @tensor A_middle_below[-1 -2; -3] := mps.AR[j][-1 1; -3] * conj(middle[1; -2])
+        left = left * TransferMatrix(A_middle, H[j], mps.AL[j])
+        # left = left * TransferMatrix(mps.AR[j], H[j], A_middle_below)
+    end
+    return G
+end
+
+
+function correlator_tf_new(state, H, O₁, O₂, middle, i::Int, N::Int)
+    S₁ = (O₁).codom[1]
+    S₂ = (O₂).dom[2]
+
+    G = similar(1:N, scalartype(state))
+    U1 = Tensor(ones, S₁)
+    U2 = Tensor(ones, S₂)
+
+    envs = environments(mps, H)
+    left_env = leftenv(envs, i, mps)
+    right_env = rightenv(envs, i, mps)
+    @tensor A_above[-1 -2; -3 -4] := mps.AC[i][-1 1; -4] * O₁[2 -2; 1 -3] * conj(U1[2])
+    left = left_env * TransferMatrix(A_above, H[i], mps.AC[i])
+    left_env2 = leftenv(envs, i+1, mps)
+    right_env2 = rightenv(envs, i+1, mps)
+    j = 1
+    k = size(H[j])[1]
+    for j = 1:6
+        for k = 1:6
+            value_onsite = @tensor left_env2[j][10 5; 1] * mps.AC[i+1][1 2; 13] * O₂[7 4; 2 3] * (U2[3]) * H[i+1][j,k][5 6; 4 12] * O₁[8 9; 6 7] * conj(U1[8]) * conj(mps.AC[i+1][10 9; 11]) * right_env2[k][13 12; 11]
+            println("for (j,k) = ($(j),$(k)), value = $(value_onsite)")
+        end
+    end
+    G[i] = value_onsite/2
+
+    for j = 1:i-1
+        println("zero for $(j)")
+        G[j] = 0.0
+    end
+    for j = i+1:N
+        right = right_env_below(mps, H, j, envs, O₂)
+        G[j] = (-1im)*final_value(left, right)
+        @tensor A_middle[-1 -2; -3] := mps.AR[j][-1 1; -3] * middle[-2; 1]
+        left = left * TransferMatrix(A_middle, H[j], mps.AR[j])
+    end
+    return G
+end
+
+function correlator_tf_swapped(state, H, O₁, O₂, middle, i::Int, N::Int)
+    S₁ = (O₁).codom[1]
+    S₂ = (O₂).dom[2]
+
+    G = similar(1:N, scalartype(state))
+    U1 = Tensor(ones, S₁)
+    U2 = Tensor(ones, S₂)
+
+    envs = environments(mps, H)
+    # left_env = leftenv(envs, i, mps)
+    # right_env = rightenv(envs, i, mps)
+    # @tensor A_above[-1 -2; -3 -4] := mps.AC[i][-1 1; -4] * O₁[2 -2; 1 -3] * conj(U1[2])
+    # # @tensor A_below[-1 -2; -3 -4] := 
+    # left = left_env * TransferMatrix(A_above, H[i], mps.AC[i])
+    left = left_env_below(mps, H, i, envs, O₁)
+    value_onsite = 0.0
+    left_env2 = leftenv(envs, i, mps)
+    right_env2 = rightenv(envs, i, mps)
+
+    j = 1
+    k = size(H[i])[1]
+    value_onsite = @tensor left_env2[j][10 5; 1] * mps.AC[i][1 2; 13] * O₁[3 4; 2 7] * conj(U1[3]) * H[i][j,k][5 6; 4 12] * O₂[7 9; 6 8] * U2[8] * conj(mps.AC[i][10 9; 11]) * right_env2[k][13 12; 11]
+    value_onsite = @tensor left_env2[j][10 5; 1] * mps.AC[i][1 2; 13] * O₂[7 4; 2 3] * conj(U1[3]) * H[i][j,k][5 6; 4 12] * O₁[8 9; 6 7] * U2[8] * conj(mps.AC[i][10 9; 11]) * right_env2[k][13 12; 11]
+    # value_onsite = @tensor left_env2[j][10 5; 1] * mps.AC[i+1][1 2; 13] * O₁[3 9; 6 7] * conj(U1[3]) * H[i+1][j,k][5 6; 4 12] * O₂[7 4; 2 8] * U2[8] * conj(mps.AC[i+1][10 9; 11]) * right_env2[k][13 12; 11]
+    G[i] = value_onsite/2
+
+    for j = 1:i-1
+        G[j] = 0.0
+    end
+    for j = i+1:N
+        right_env = rightenv(envs, j, mps)
+        @tensor A_above[-1 -2; -3 -4] := mps.AC[i][-1 1; -4] * O₂[-3 -2; 1 2] * conj(U2[2])
+        right =  TransferMatrix(A_above, H[i], mps.AC[i]) * right_env
+        # right = right_env_below(mps, H, j, envs, O₂)
+        G[j] = (-1im)*final_value(left, right)
+        @tensor A_middle[-1 -2; -3] := mps.AR[j][-1 1; -3] * middle[-2; 1]
+        left = left * TransferMatrix(A_middle, H[j], mps.AR[j])
+    end
+    return G
+end
+
 
 # @tensor A_middle_below[-1 -2; -3] := mps.AR[i][-1 1; -3] * conj(S_z_symm[-2; 1])
 
+#=
 m = 0.3
 truncation = 2.5
 Delta_g = 0.0
@@ -215,6 +373,7 @@ i = 2
 
 @load "SanderDM_Thesis_2324/gs_mps_trunc_$(truncation)_mass_$(m)_v_0.0_Delta_g_$(Delta_g)" mps
 @load "operators_for_occupation_number" S⁺ S⁻ S_z_symm
+@load "operators_new" S⁺swap S⁻swap S_z_symm
 
 
 spin = 1//2
@@ -245,7 +404,15 @@ right_env = rightenv(envs, i, mps)
 
 # r = right_env_below(mps, H, i+1, envs, S⁻)
 
-G = correlator_tf(mps, H, S⁺, S⁻, (2*im)*S_z_symm, 1, 10)
+G1 = correlator_tf(mps, H, S⁺, S⁻, (2*im)*S_z_symm, 1, 10)
+G2 = correlator_tf(mps, H, S⁺, S⁻, (2*im)*S_z_symm, 2, 10)
+G3 = correlator_tf(mps, H, S⁻swap, S⁺swap, (2*im)*S_z_symm, 1, 10)
+G4 = correlator_tf(mps, H, S⁻swap, S⁺swap, (2*im)*S_z_symm, 2, 10)
+G5 = correlator_tf_new(mps, H, S⁺, S⁻, (2*im)*S_z_symm, 1, 10)
+G6 = correlator_tf_new(mps, H, S⁺, S⁻, (2*im)*S_z_symm, 2, 10)
+
+break
+
 # G_new = correlator_tf(mps, H_unit, S⁺, S⁻, (2*im)*S_z_symm, 1, 10)
 G_new2 = correlator_tf(mps, H_unit, S⁺, S⁻, (2*im)*S_z_symm, 1, 10)
 G_old = correlator(mps, S⁺, S⁻, S_z_symm, 1, 10)
@@ -361,5 +528,7 @@ for (j,k) in keys(H[i])
     @tensor S_below[-1 -2 -3; -4 -5 -6] := H[i][j,k][-1 1; -4 -5] * S⁻[-2 -3; 1 -6]
     println(norm(S_below-S_above))
 end
+
+=#
 
 =#

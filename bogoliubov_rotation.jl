@@ -8,6 +8,7 @@ using Plots
 
 include("get_thirring_hamiltonian.jl")
 include("get_thirring_hamiltonian_symmetric.jl")
+include("get_X_tensors.jl")
 
 # struct SumTransferMatrix{A,B}
 #     tms::Vector
@@ -37,8 +38,8 @@ include("get_thirring_hamiltonian_symmetric.jl")
 #     return sum(results)
 # end;
 
-function one_minus_tm(v, tm)
-    return v - tm(v)
+function one_minus_tm(v, tm; factor = 1.0)
+    return v - factor*tm(v)
 end
 
 function one_minus_tm_new(v, AL1, AL2, AR1, AR2)
@@ -53,6 +54,10 @@ function transpose_tail(t::AbstractTensorMap) # make TensorMap{S,1,N₁+N₂-1}
     I2 = TensorKit.domainind(t)
     return transpose(t, ((I1[1],), (I2..., reverse(Base.tail(I1))...)))
 end
+
+N = 500
+X = [(2*pi)/N*i - pi for i = 0:N-1]
+
 
 mass = 0.3
 v = 0.0
@@ -75,7 +80,7 @@ S⁺ = TensorMap([0.0+0.0im 1.0+0.0im; 0.0+0.0im 0.0+0.0im], Triv_space ⊗ pspa
 S⁻ = TensorMap([0.0+0.0im 0.0+0.0im; 1.0+0.0im 0.0+0.0im], Plus_space ⊗ pspace, pspace ⊗ Triv_space)
 
 
-function create_excitation(mps, a, b, qp_state; momentum = 0.0)
+function create_excitation_OLD(mps, a, b, qp_state; momentum = 0.0)
     # @load "operators_for_occupation_number" S⁺ S⁻ S_z_symm
     # @tensor Snew[-1 -2; -3 -4] := S⁻[-4 -2; -3 -1]
     Plus_space = U1Space(1 => 1)
@@ -117,17 +122,20 @@ function create_excitation(mps, a, b, qp_state; momentum = 0.0)
     T12 = t1*t2
     T21 = t2*t1
 
-    @tensor RHS12[-1 -3; -2] := B1[-1 1; -3 2] * conj(mps.AR[1][-2 1; 2]) + mps.AL[1][-1 1; 2] * B2[2 3; -3 4] * conj(mps.AR[1][-2 1; 5]) * conj(mps.AR[2][5 3; 4])
+    @tensor RHS12[-1 -3; -2] := B1[-1 1; -3 2] * conj(mps.AR[1][-2 1; 2]) + exp(im*momentum) * mps.AL[1][-1 1; 2] * B2[2 3; -3 4] * conj(mps.AR[1][-2 1; 5]) * conj(mps.AR[2][5 3; 4])
     @tensor RHS21[-1 -3; -2] := B2[-1 1; -3 2] * conj(mps.AR[2][-2 1; 2]) + mps.AL[2][-1 1; 2] * B1[2 3; -3 4] * conj(mps.AR[2][-2 1; 5]) * conj(mps.AR[1][5 3; 4])
     # @tensor RHS12[-3 -2; -1] := B1[-1 1; -3 2] * conj(mps.AR[1][-2 1; 2]) + mps.AL[1][-1 1; 2] * B2[2 3; -3 4] * conj(mps.AR[1][-2 1; 5]) * conj(mps.AR[2][5 3; 4])
     # @tensor RHS21[-3 -2; -1] := B2[-1 1; -3 2] * conj(mps.AR[2][-2 1; 2]) + mps.AL[2][-1 1; 2] * B1[2 3; -3 4] * conj(mps.AR[2][-2 1; 5]) * conj(mps.AR[1][5 3; 4])
 
-    XL, convhist_L = linsolve(x -> one_minus_tm(x, T21), RHS21, maxiter=1000, tol = 1e-14)
-    XR, convhist_R = linsolve(x -> one_minus_tm(x, T12), RHS12, maxiter=1000, tol = 1e-14)
+    XL, convhist_L = linsolve(x -> one_minus_tm(x, T21; factor = exp(im*momentum)), RHS21, maxiter=1000, tol = 1e-14)
+    XR, convhist_R = linsolve(x -> one_minus_tm(x, T12; factor = exp(im*momentum)), RHS12, maxiter=1000, tol = 1e-14)
+    # XL, convhist_L = linsolve(T21, RHS21, maxiter=1000, tol = 1e-14)#, a0 = 1, a1 = -exp(im*momentum))
+    # XR, convhist_R = linsolve(T12, RHS12, maxiter=1000, tol = 1e-14)#, a0 = 1, a1 = -exp(im*momentum))
+
     # XL, convhist_L = linsolve(x -> one_minus_tm_new(x, mps.AL[2], mps.AL[1], mps.AR[2], mps.AR[1]), RHS21, maxiter=1000, tol = 1e-14)
     # XR, convhist_R = linsolve(x -> one_minus_tm_new(x, mps.AL[1], mps.AL[2], mps.AR[1], mps.AR[2]), RHS12, maxiter=1000, tol = 1e-14)
 
-    @tensor Bnew1[-1 -2; -3 -4] := B1[-1 -2; -3 -4] + mps.AL[1][-1 -2; 1] * XL[1 -3; -4] - XR[-1 -3; 1] * mps.AR[1][1 -2; -4]
+    @tensor Bnew1[-1 -2; -3 -4] := B1[-1 -2; -3 -4] + exp(im*momentum) * mps.AL[1][-1 -2; 1] * XL[1 -3; -4] - XR[-1 -3; 1] * mps.AR[1][1 -2; -4]
     @tensor Bnew2[-1 -2; -3 -4] := B2[-1 -2; -3 -4] + mps.AL[2][-1 -2; 1] * XR[1 -3; -4] - XL[-1 -3; 1] * mps.AR[2][1 -2; -4] 
 
     @tensor check_B1[-1 -2; -3] := Bnew1[-1 1; -3 2] * conj(mps.AR[1][-2 1; 2])
@@ -153,10 +161,177 @@ function create_excitation(mps, a, b, qp_state; momentum = 0.0)
     normalize!(qp_right)
     @assert abs(1-norm(qp_right)) < 1e-10
 
+    return sum(dot.(qp_right.Xs, qp_state.Xs))
     return dot(qp_right, qp_state)
 end
 
-Bs_zero = convert(RightGaugedQP, anti_Bs[18])
+function create_excitation(mps, a, b, qp_state; momentum = 0.0)
+    Plus_space = U1Space(1 => 1)
+    Min_space = U1Space(-1 => 1)
+    Triv_space = U1Space(0 => 1)
+    # S⁺_old = TensorMap([0.0+0.0im 1.0+0.0im; 0.0+0.0im 0.0+0.0im], Triv_space ⊗ pspace, pspace ⊗ Plus_space)
+    S⁺ = TensorMap([0.0+0.0im 1.0+0.0im; 0.0+0.0im 0.0+0.0im], Triv_space ⊗ pspace, pspace ⊗ Min_space')
+    # S⁻ = TensorMap([0.0+0.0im 0.0+0.0im; 1.0+0.0im 0.0+0.0im], Plus_space ⊗ pspace, pspace ⊗ Triv_space)
+    
+    X_tensors = get_X_tensors(mps.AL)
+
+    left_gs = mps
+    right_gs = mps
+
+    VRs = [adjoint(leftnull(adjoint(v))) for v in transpose_tail.(right_gs.AR)]
+
+    @tensor should_be_zero[-1; -2] := (VRs[1][-1 1; 2]) * conj(mps.AR[1][-2 2; 1])
+    @assert norm(should_be_zero) < 1e-10
+
+    S_space = Tensor(ones, space(S⁺)[1]) # this and the subsequent two lines were Snew instead of S⁺
+
+    # @tensor B1[-1 -2; -3 -4] := (a) * X_tensors[1][-1; 3] * mps.AC[1][3 1; -4] * S⁺[2 -2; 1 -3] * conj(S_space[2])
+    # @tensor B2[-1 -2; -3 -4] := (b) * X_tensors[2][-1; 3] * mps.AC[2][3 1; -4] * S⁺[2 -2; 1 -3] * conj(S_space[2])
+    @tensor B1[-1 -2; -3 -4] := X_tensors[1][-1; 3] * mps.AC[1][3 1; -4] * S⁺[2 -2; 1 -3] * conj(S_space[2])
+    @tensor B2[-1 -2; -3 -4] := X_tensors[2][-1; 3] * mps.AC[2][3 1; -4] * S⁺[2 -2; 1 -3] * conj(S_space[2])
+
+    t1 = TransferMatrix(mps.AL[1], mps.AR[1])
+    t2 = TransferMatrix(mps.AL[2], mps.AR[2])
+    # t1 = TensorKit.flip(t1)
+    # t2 = TensorKit.flip(t2)
+    T12 = t1*t2
+    T21 = t2*t1
+
+    @tensor RHS12[-1 -3; -2] := B1[-1 1; -3 2] * conj(mps.AR[1][-2 1; 2]) + exp(im*momentum) * mps.AL[1][-1 1; 2] * B2[2 3; -3 4] * conj(mps.AR[1][-2 1; 5]) * conj(mps.AR[2][5 3; 4])
+    @tensor RHS21[-1 -3; -2] := B2[-1 1; -3 2] * conj(mps.AR[2][-2 1; 2]) + mps.AL[2][-1 1; 2] * B1[2 3; -3 4] * conj(mps.AR[2][-2 1; 5]) * conj(mps.AR[1][5 3; 4])
+    # @tensor RHS12[-3 -2; -1] := B1[-1 1; -3 2] * conj(mps.AR[1][-2 1; 2]) + mps.AL[1][-1 1; 2] * B2[2 3; -3 4] * conj(mps.AR[1][-2 1; 5]) * conj(mps.AR[2][5 3; 4])
+    # @tensor RHS21[-3 -2; -1] := B2[-1 1; -3 2] * conj(mps.AR[2][-2 1; 2]) + mps.AL[2][-1 1; 2] * B1[2 3; -3 4] * conj(mps.AR[2][-2 1; 5]) * conj(mps.AR[1][5 3; 4])
+
+    XL, convhist_L = linsolve(x -> one_minus_tm(x, T21; factor = exp(im*momentum)), RHS21, maxiter=1000, tol = 1e-14)
+    XR, convhist_R = linsolve(x -> one_minus_tm(x, T12; factor = exp(im*momentum)), RHS12, maxiter=1000, tol = 1e-14)
+    # XL, convhist_L = linsolve(T21, RHS21, maxiter=1000, tol = 1e-14)#, a0 = 1, a1 = -exp(im*momentum))
+    # XR, convhist_R = linsolve(T12, RHS12, maxiter=1000, tol = 1e-14)#, a0 = 1, a1 = -exp(im*momentum))
+
+    # XL, convhist_L = linsolve(x -> one_minus_tm_new(x, mps.AL[2], mps.AL[1], mps.AR[2], mps.AR[1]), RHS21, maxiter=1000, tol = 1e-14)
+    # XR, convhist_R = linsolve(x -> one_minus_tm_new(x, mps.AL[1], mps.AL[2], mps.AR[1], mps.AR[2]), RHS12, maxiter=1000, tol = 1e-14)
+
+    @tensor Bnew1[-1 -2; -3 -4] := B1[-1 -2; -3 -4] + exp(im*momentum) * mps.AL[1][-1 -2; 1] * XL[1 -3; -4] - XR[-1 -3; 1] * mps.AR[1][1 -2; -4]
+    @tensor Bnew2[-1 -2; -3 -4] := B2[-1 -2; -3 -4] + mps.AL[2][-1 -2; 1] * XR[1 -3; -4] - XL[-1 -3; 1] * mps.AR[2][1 -2; -4] 
+
+    @tensor check_B1[-1 -2; -3] := Bnew1[-1 1; -3 2] * conj(mps.AR[1][-2 1; 2])
+    @tensor check_B2[-1 -2; -3] := Bnew2[-1 1; -3 2] * conj(mps.AR[2][-2 1; 2])
+
+    @assert norm(check_B1) < 1e-10
+    @assert norm(check_B2) < 1e-10
+
+    @tensor X1[-1; -3 -2] := (Bnew1[-1 1; -3 2]) * conj(VRs[1][-2 2; 1])
+    @tensor X2[-1; -3 -2] := (Bnew2[-1 1; -3 2]) * conj(VRs[2][-2 2; 1])
+    # @tensor X1[-1; -2 -3] := (Bnew1[-1 1; -3 2]) * conj(VRs[1][-2 2; 1])
+    # @tensor X2[-1; -2 -3] := (Bnew2[-1 1; -3 2]) * conj(VRs[2][-2 2; 1])
+    Xs = [X1, X2]
+
+    @tensor B1_again[-1 -2; -3 -4] := X1[-1; -3 1] * (VRs[1][1 -4; -2])
+    @tensor B2_again[-1 -2; -3 -4] := X2[-1; -3 1] * (VRs[2][1 -4; -2])
+
+    @assert norm(B1_again-Bnew1) < 1e-10
+    @assert norm(B2_again-Bnew2) < 1e-10
+
+    qp_right = RightGaugedQP(left_gs, right_gs, [a*X1, b*X2], VRs, momentum)
+
+    normalize!(qp_right)
+    @assert abs(1-norm(qp_right)) < 1e-10
+
+    mass = 0.3
+    v = 0.0
+    Delta_g = 0.0
+    H = get_thirring_hamiltonian_symmetric(mass, Delta_g, v)
+    E_orig = expectation_value(qp_state, H)
+    E_new = expectation_value(qp_right, H)
+
+    println("E_orig = $(E_orig)")
+    println("E_new = $(E_new)")
+
+    return sum(dot.(qp_right.Xs, qp_state.Xs))
+
+    return dot(qp_right, qp_state)
+end
+
+function get_excitation(mps, a, b; momentum = 0.0, new = true)
+    Min_space = U1Space(-1 => 1)
+    Triv_space = U1Space(0 => 1)
+    S⁺ = TensorMap([0.0+0.0im 1.0+0.0im; 0.0+0.0im 0.0+0.0im], Triv_space ⊗ pspace, pspace ⊗ Min_space')
+    
+    X_tensors = get_X_tensors(mps.AL)
+
+    if new
+        left_gs = mps
+    else
+        AL_new = copy(mps.AL)
+        AC_new = copy(mps.AC)
+        AR_new = copy(mps.AR)
+        for w = 1:length(mps)
+            @tensor new_tensor_AL[-1 -2; -3] := mps.AL[w][-1 1; -3] * (-2*im*S_z_symm)[-2; 1]
+            AL_new[w] = new_tensor_AL
+            @tensor new_tensor_AR[-1 -2; -3] := mps.AR[w][-1 1; -3] * (-2*im*S_z_symm)[-2; 1]
+            AR_new[w] = new_tensor_AR
+            @tensor new_tensor_AC[-1 -2; -3] := mps.AC[w][-1 1; -3] * (-2*im*S_z_symm)[-2; 1]
+            AC_new[w] = new_tensor_AC
+        end
+        left_gs = InfiniteMPS(AL_new, AR_new, mps.CR, AC_new)
+    end    
+
+    right_gs = mps
+
+    VRs = [adjoint(leftnull(adjoint(v))) for v in transpose_tail.(right_gs.AR)]
+
+    @tensor should_be_zero[-1; -2] := (VRs[1][-1 1; 2]) * conj(mps.AR[1][-2 2; 1])
+    @assert norm(should_be_zero) < 1e-10
+
+    S_space = Tensor(ones, space(S⁺)[1]) # this and the subsequent two lines were Snew instead of S⁺
+
+    if new
+        @tensor B1[-1 -2; -3 -4] := (a) * X_tensors[1][-1; 3] * mps.AC[1][3 1; -4] * S⁺[2 -2; 1 -3] * conj(S_space[2])
+        @tensor B2[-1 -2; -3 -4] := (b) * X_tensors[2][-1; 3] * mps.AC[2][3 1; -4] * S⁺[2 -2; 1 -3] * conj(S_space[2])
+    else
+        @tensor B1[-1 -2; -3 -4] := (a) * mps.AC[1][-1 1; -4] * S⁺[2 -2; 1 -3] * conj(S_space[2])
+        @tensor B2[-1 -2; -3 -4] := (b) * mps.AC[2][-1 1; -4] * S⁺[2 -2; 1 -3] * conj(S_space[2])
+    end    
+
+    t1 = TransferMatrix(mps.AL[1], mps.AR[1])
+    t2 = TransferMatrix(mps.AL[2], mps.AR[2])
+    T12 = t1*t2
+    T21 = t2*t1
+
+    @tensor RHS12[-1 -3; -2] := B1[-1 1; -3 2] * conj(mps.AR[1][-2 1; 2]) + exp(im*momentum) * mps.AL[1][-1 1; 2] * B2[2 3; -3 4] * conj(mps.AR[1][-2 1; 5]) * conj(mps.AR[2][5 3; 4])
+    @tensor RHS21[-1 -3; -2] := B2[-1 1; -3 2] * conj(mps.AR[2][-2 1; 2]) + mps.AL[2][-1 1; 2] * B1[2 3; -3 4] * conj(mps.AR[2][-2 1; 5]) * conj(mps.AR[1][5 3; 4])
+
+    XL, convhist_L = linsolve(x -> one_minus_tm(x, T21; factor = exp(im*momentum)), RHS21, maxiter=1000, tol = 1e-14)
+    XR, convhist_R = linsolve(x -> one_minus_tm(x, T12; factor = exp(im*momentum)), RHS12, maxiter=1000, tol = 1e-14)
+
+    @tensor Bnew1[-1 -2; -3 -4] := B1[-1 -2; -3 -4] + exp(im*momentum) * mps.AL[1][-1 -2; 1] * XL[1 -3; -4] - XR[-1 -3; 1] * mps.AR[1][1 -2; -4]
+    @tensor Bnew2[-1 -2; -3 -4] := B2[-1 -2; -3 -4] + mps.AL[2][-1 -2; 1] * XR[1 -3; -4] - XL[-1 -3; 1] * mps.AR[2][1 -2; -4] 
+
+    @tensor check_B1[-1 -2; -3] := Bnew1[-1 1; -3 2] * conj(mps.AR[1][-2 1; 2])
+    @tensor check_B2[-1 -2; -3] := Bnew2[-1 1; -3 2] * conj(mps.AR[2][-2 1; 2])
+
+    @assert norm(check_B1) < 1e-10
+    @assert norm(check_B2) < 1e-10
+
+    @tensor X1[-1; -3 -2] := (Bnew1[-1 1; -3 2]) * conj(VRs[1][-2 2; 1])
+    @tensor X2[-1; -3 -2] := (Bnew2[-1 1; -3 2]) * conj(VRs[2][-2 2; 1])
+    # @tensor X1[-1; -2 -3] := (Bnew1[-1 1; -3 2]) * conj(VRs[1][-2 2; 1])
+    # @tensor X2[-1; -2 -3] := (Bnew2[-1 1; -3 2]) * conj(VRs[2][-2 2; 1])
+    Xs = [X1, X2]
+
+    @tensor B1_again[-1 -2; -3 -4] := X1[-1; -3 1] * (VRs[1][1 -4; -2])
+    @tensor B2_again[-1 -2; -3 -4] := X2[-1; -3 1] * (VRs[2][1 -4; -2])
+
+    @assert norm(B1_again-Bnew1) < 1e-10
+    @assert norm(B2_again-Bnew2) < 1e-10
+
+    qp_right = RightGaugedQP(left_gs, right_gs, Xs, VRs, momentum)
+
+    normalize!(qp_right)
+    @assert abs(1-norm(qp_right)) < 1e-10
+
+    return qp_right
+end
+
 
 function get_optimal_rotation(quasiparticle; momentum = 0.0, theta_points = 10, phi_points = 10)
     a_min = -5.0
@@ -237,12 +412,55 @@ function get_optimal_rotation(quasiparticle; momentum = 0.0, theta_points = 10, 
     return (a_min, b_min, a_max, b_max, overlap_min, overlap_max, overlaps)
 end
 
+
+function optimize_via_energy(mps, mass, Delta_g, v; momentum = 0.0, theta_points = 10, phi_points = 10, new = true)
+    a_min = -5.0
+    b_min = -5.0
+    energy_min = 1e5
+
+    H = get_thirring_hamiltonian_symmetric(mass, Delta_g, v);
+
+    energies = []
+    for theta = LinRange(0.0, pi, theta_points)
+        println("theta = $(theta/pi) pi")
+        energies_theta = []
+        for phi = LinRange(0.0, 2*pi, phi_points)
+            a = cos(theta)#*exp(im*thetaa)
+            b = sin(theta)*exp(im*phi)
+            @assert abs(norm([a b])-1.0) < 1e-10
+
+            qp_state = get_excitation(mps, a, b; momentum = momentum, new = new)
+            qp_state_prime = effective_excitation_hamiltonian(H, qp_state)
+            energy = norm(qp_state_prime)/norm(qp_state)
+            println(energy)
+            if energy < energy_min
+                energy_min = energy
+                a_min = a
+                b_min = b
+            end
+            push!(energies_theta, energy)
+        end
+        push!(energies, energies_theta)
+    end
+
+
+    println("Minimal energy occurs for a = $(a_min), b = $(b_min)\n Energy: $(energy_min)")
+    return (a_min, b_min, energy_min, energies)
+end
+
+
 k_values = LinRange(-bounds_k, bounds_k,length(Bs))
 
-index = 18
-k = k_values[index]
-qp_state = convert(RightGaugedQP, anti_Bs[index])
-qp_state0 = convert(RightGaugedQP, anti_Bs[18])
+# index = 25
+# k = k_values[index]
+# qp_anti_state = convert(RightGaugedQP, anti_Bs[index])
+# qp_anti_state0 = convert(RightGaugedQP, anti_Bs[18])
+# qp_state = convert(RightGaugedQP, anti_Bs[index])
+# qp_state0 = convert(RightGaugedQP, anti_Bs[18])
+
+(a_min, b_min, energy_min, energies) = optimize_via_energy(mps, mass, Delta_g, v; momentum = 0.1, theta_points = 50, phi_points = 50, new = true)
+
+break
 
 lambda = sqrt(mass^2+sin(k/2)^2)
 a1 = exp(im*k/2)
@@ -251,6 +469,24 @@ norm1 = sqrt(abs(a1)^2+abs(b1)^2)
 a2 = exp(im*k/2)
 b2 = -sin(k/2)/(mass+lambda)
 norm2 = sqrt(abs(a2)^2+abs(b2)^2)
+
+angle_extra = 0.5
+
+a = a2/norm2
+b = b2/norm2*exp(im*angle_extra)
+
+
+
+println(abs(create_excitation(mps, a, b, qp_state, momentum = k)))
+println(abs(create_excitation(mps, 1.0, 1.0, qp_state, momentum = k)))
+
+
+
+H = get_thirring_hamiltonian_symmetric(mass, Delta_g, v);
+qp_finite = convert(FiniteMPS, qp_state)
+
+qp_state_prime = effective_excitation_hamiltonian(H, qp_state)
+break
 # a2 = 1.0
 # b2 = 0.0
 # norm2 = 1.0
@@ -264,11 +500,11 @@ norm2 = sqrt(abs(a2)^2+abs(b2)^2)
 # println(abs(create_excitation(mps, a1/norm1, b1/norm1, qp_state, momentum = 2*k)))
 # println(abs(create_excitation(mps, a2/norm2, b2/norm2, qp_state, momentum = 2*k)))
 
-theta_points = 50
-phi_points = 50
+theta_points = 49
+phi_points = 49
 
 println("Started with optimalization")
-(a_min, b_min, a_max, b_max, overlap_min, overlap_max, overlaps) = get_optimal_rotation(qp_state; momentum = -k, theta_points=theta_points,phi_points=phi_points)
+(a_min, b_min, a_max, b_max, overlap_min, overlap_max, overlaps) = get_optimal_rotation(qp_state; momentum = k, theta_points=theta_points,phi_points=phi_points)
 
 lambda = sqrt(mass^2 + (sin(k/2))^2)
 if k == 0.0
