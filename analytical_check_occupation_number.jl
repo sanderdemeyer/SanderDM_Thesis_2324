@@ -48,13 +48,13 @@ function get_rotation(k, m)
     return (a11,a12,a21,a22)#, (b11,b12,b21,b22))
 end
 
-function get_rotation_vector(m, X)
-    base = [get_rotation(k,m) for k in X]
+function get_rotation_vector(mass, X)
+    base = [get_rotation(k,mass) for k in X]
     return [[base[k_index][i] for k_index in 1:length(X)] for i = 1:4]
 end
 
 N = 20
-mass = 1.0
+mass = 30.0
 X = [(2*pi)/N*i - pi for i = 0:N-1]
 
 # corr = zeros(ComplexF64, 2*N, 2*N)
@@ -72,12 +72,98 @@ corr = zeros(ComplexF64, 2*N, 2*N)
 for m = 0:N-1
     for n = 0:N-1
         (a11,a12,a21,a22) = get_rotation_vector(mass, X)
-        corr[2*m+2,2*n+2] = sum([exp(-im*k*(m-n))*a12[k_index]*conj(a12[k_index]) for (k_index,k) in enumerate(X)])/N
-        corr[2*m+1,2*n+2] = sum([exp(-im*k*(m-n))*a22[k_index]*conj(a12[k_index]) for (k_index,k) in enumerate(X)])/N
-        corr[2*m+2,2*n+1] = sum([exp(-im*k*(m-n))*a12[k_index]*conj(a22[k_index]) for (k_index,k) in enumerate(X)])/N
-        corr[2*m+1,2*n+1] = sum([exp(-im*k*(m-n))*a22[k_index]*conj(a22[k_index]) for (k_index,k) in enumerate(X)])/N
+        corr[2*m+1,2*n+1] = sum([exp(-im*k*(m-n))*a12[k_index]*conj(a12[k_index]) for (k_index,k) in enumerate(X)])/N
+        corr[2*m+2,2*n+1] = sum([exp(-im*k*(m-n))*a22[k_index]*conj(a12[k_index]) for (k_index,k) in enumerate(X)])/N
+        corr[2*m+1,2*n+2] = sum([exp(-im*k*(m-n))*a12[k_index]*conj(a22[k_index]) for (k_index,k) in enumerate(X)])/N
+        corr[2*m+2,2*n+2] = sum([exp(-im*k*(m-n))*a22[k_index]*conj(a22[k_index]) for (k_index,k) in enumerate(X)])/N
     end
 end
+
+(V₊,V₋) = V_matrix_pos_neg_energy(X, mass)
+# (V₊,V₋) = V_matrix(X, mass)
+occ_matrix = adjoint(V₊)*corr*(V₊)
+
+occ_matrix_expected = zeros(Float64, 2*N, 2*N)
+for i = 1:N
+    if X[i] < 0.0
+        occ_matrix_expected[i,i] = 0.0
+        occ_matrix_expected[N+i,N+i] = 1.0
+    else
+        occ_matrix_expected[i,i] = 1.0
+        occ_matrix_expected[N+i,N+i] = 0.0
+    end
+end
+
+V = hcat(V₊, V₋)
+corr_expected = V * occ_matrix_expected * adjoint(V)
+
+occ_p = adjoint(V₊) * corr_expected * V₊
+occ_m = adjoint(V₋) * corr_expected * V₋
+
+(F, PN) = V_matrix_unpermuted(X, mass)
+
+diag_expected = zeros(ComplexF64, 2*N, 2*N)
+for (k_index,k) in enumerate(X)
+    diag_expected[2*k_index-1,2*k_index-1] = mass
+    diag_expected[2*k_index-1,2*k_index] = (-im/2)*(1-exp(im*k))
+    diag_expected[2*k_index,2*k_index-1] = (im/2)*(1-exp(-im*k))
+    diag_expected[2*k_index,2*k_index] = -mass
+end
+corr_energy_expected = F * diag_expected * adjoint(F)
+
+M = get_2D_matrix(1, diag)
+
+
+# (V₊,V₋) = V_matrix_pos_neg_energy(X, mass)
+(V₊,V₋) = V_matrix(X, mass)
+
+positive = true
+
+if positive
+    occ_matrix_energy = adjoint(V₊)*(corr_energy_expected)*(V₊)
+    occ_matrix = adjoint(V₊)*corr_expected*(V₊)
+else
+    occ_matrix_energy = adjoint(V₋)*(corr_energy_expected)*(V₋)
+    occ_matrix = adjoint(V₋)*corr_expected*(V₋)
+end
+
+# occ_matrix_energy = adjoint(PN) * diag_expected * PN
+
+
+# corr_0 = corr_expected[21:22,21:22]
+# (a11,a12,a21,a22) = get_rotation_vector(mass, X)
+# println(sum([exp(-im*k*(m-n))*a12[k_index]*conj(a12[k_index]) for (k_index,k) in enumerate(X)])/N)
+# println(sum([exp(-im*k*(m-n))*a22[k_index]*conj(a12[k_index]) for (k_index,k) in enumerate(X)])/N)
+# println(sum([exp(-im*k*(m-n))*a12[k_index]*conj(a22[k_index]) for (k_index,k) in enumerate(X)])/N)
+# println(sum([exp(-im*k*(m-n))*a22[k_index]*conj(a22[k_index]) for (k_index,k) in enumerate(X)])/N)
+
+# positive = false
+# if positive
+#     corr_expected = V₊ * occ_matrix_expected * adjoint(V₊)
+# else
+#     corr_expected = V₋ * occ_matrix_expected * adjoint(V₋)
+# end
+
+occ = zeros(Float64, N)
+occ_energy = zeros(Float64, N)
+for (i,k₀) in enumerate(X)
+    array = gaussian_array(X, k₀, σ, x₀)
+    occupation_number = ((array)*occ_matrix*adjoint(array))
+    occupation_number_energy = (array)*(occ_matrix_energy)*adjoint(array) / ((array)*occ_matrix*adjoint(array))
+
+    occ[i] = real(occupation_number)
+    occ_energy[i] = real(occupation_number_energy)
+end
+
+plt = scatter(X, occ, label = "data")
+display(plt)
+
+theoretical_energies = [sqrt(mass^2+sin(k/2)^2) for k in X]
+plt = scatter(X, occ_energy, label = "data")
+scatter!(X, theoretical_energies)
+display(plt)
+
+break
 
 function energy(X, mass)
     println("mass = $(mass)")
@@ -236,9 +322,9 @@ corr_energy = corr_energy + adjoint(corr_energy)
 σ = 0.1
 x₀ = div(N,2)
 
-(V₊,V₋) = V_matrix(X, mass)
+(V₊,V₋) = V_matrix_pos_neg_energy(X, mass)
 (F, PN) = V_matrix_unpermuted(X, mass)
-V = F * PN
+# V = F * PN
 
 diag = adjoint(F) * corr_energy * F
 
@@ -288,8 +374,8 @@ end
 plt = scatter(X, occ, label = "data")
 display(plt)
 # plt = scatter(X, (occ.*2).+mass, label = "data")
-plt = scatter(X, occ_energy, label = "data")
-scatter!(X, theoretical_energies, label = "theory")
-display(plt)
+# plt = scatter(X, occ_energy, label = "data")
+# scatter!(X, theoretical_energies, label = "theory")
+# display(plt)
 
 (theoretical_energies .-minimum(theoretical_energies))./(occ_energy .-minimum(occ_energy))
