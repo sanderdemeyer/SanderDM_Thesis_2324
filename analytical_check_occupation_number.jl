@@ -54,7 +54,7 @@ function get_rotation_vector(mass, X)
 end
 
 N = 20
-mass = 30.0
+mass = 1.0
 X = [(2*pi)/N*i - pi for i = 0:N-1]
 
 # corr = zeros(ComplexF64, 2*N, 2*N)
@@ -68,16 +68,23 @@ X = [(2*pi)/N*i - pi for i = 0:N-1]
 #     end
 # end
 
-corr = zeros(ComplexF64, 2*N, 2*N)
+corr_ana = zeros(ComplexF64, 2*N, 2*N)
 for m = 0:N-1
     for n = 0:N-1
         (a11,a12,a21,a22) = get_rotation_vector(mass, X)
-        corr[2*m+1,2*n+1] = sum([exp(-im*k*(m-n))*a12[k_index]*conj(a12[k_index]) for (k_index,k) in enumerate(X)])/N
-        corr[2*m+2,2*n+1] = sum([exp(-im*k*(m-n))*a22[k_index]*conj(a12[k_index]) for (k_index,k) in enumerate(X)])/N
-        corr[2*m+1,2*n+2] = sum([exp(-im*k*(m-n))*a12[k_index]*conj(a22[k_index]) for (k_index,k) in enumerate(X)])/N
-        corr[2*m+2,2*n+2] = sum([exp(-im*k*(m-n))*a22[k_index]*conj(a22[k_index]) for (k_index,k) in enumerate(X)])/N
+        corr_ana[2*m+2,2*n+2] = sum([exp(-im*k*(m-n))*a12[k_index]*conj(a12[k_index]) for (k_index,k) in enumerate(X)])/N
+        corr_ana[2*m+1,2*n+2] = sum([exp(-im*k*(m-n))*a22[k_index]*conj(a12[k_index]) for (k_index,k) in enumerate(X)])/N
+        corr_ana[2*m+2,2*n+1] = sum([exp(-im*k*(m-n))*a12[k_index]*conj(a22[k_index]) for (k_index,k) in enumerate(X)])/N
+        corr_ana[2*m+1,2*n+1] = sum([exp(-im*k*(m-n))*a22[k_index]*conj(a22[k_index]) for (k_index,k) in enumerate(X)])/N
     end
 end
+
+corr_0 = corr_expected[21:22,21:22]
+(a11,a12,a21,a22) = get_rotation_vector(mass, X)
+println(sum([exp(-im*k*(m-n))*a12[k_index]*conj(a12[k_index]) for (k_index,k) in enumerate(X)])/N)
+println(sum([exp(-im*k*(m-n))*a22[k_index]*conj(a12[k_index]) for (k_index,k) in enumerate(X)])/N)
+println(sum([exp(-im*k*(m-n))*a12[k_index]*conj(a22[k_index]) for (k_index,k) in enumerate(X)])/N)
+println(sum([exp(-im*k*(m-n))*a22[k_index]*conj(a22[k_index]) for (k_index,k) in enumerate(X)])/N)
 
 (V₊,V₋) = V_matrix_pos_neg_energy(X, mass)
 # (V₊,V₋) = V_matrix(X, mass)
@@ -129,13 +136,6 @@ end
 
 # occ_matrix_energy = adjoint(PN) * diag_expected * PN
 
-
-# corr_0 = corr_expected[21:22,21:22]
-# (a11,a12,a21,a22) = get_rotation_vector(mass, X)
-# println(sum([exp(-im*k*(m-n))*a12[k_index]*conj(a12[k_index]) for (k_index,k) in enumerate(X)])/N)
-# println(sum([exp(-im*k*(m-n))*a22[k_index]*conj(a12[k_index]) for (k_index,k) in enumerate(X)])/N)
-# println(sum([exp(-im*k*(m-n))*a12[k_index]*conj(a22[k_index]) for (k_index,k) in enumerate(X)])/N)
-# println(sum([exp(-im*k*(m-n))*a22[k_index]*conj(a22[k_index]) for (k_index,k) in enumerate(X)])/N)
 
 # positive = false
 # if positive
