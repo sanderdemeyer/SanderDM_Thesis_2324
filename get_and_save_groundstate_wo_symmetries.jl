@@ -6,16 +6,16 @@ using MPSKitModels, TensorKit, MPSKit
 
 include("get_thirring_hamiltonian.jl")
 
-mass = 0.3
+mass = 0.0
 v = 0.0
 Delta_g = 0.0
 
-trunc = 4.0
+trunc = 3.0
 tolerance = trunc+3.0
-number_of_loops = 2
+number_of_loops = 7
 iterations = [50 100]
 
-D = 5
+D = 20
 mps = InfiniteMPS([ℂ^2, ℂ^2],[ℂ^D, ℂ^D])
 hamiltonian = get_thirring_hamiltonian(mass, Delta_g, v)
 
@@ -28,6 +28,10 @@ for _ in 1:number_of_loops
 end 
 
 (mps,envs,_) = find_groundstate(mps,hamiltonian,VUMPS(maxiter = iterations[2], tol_galerkin = 1e-12))
+
+E = expectation_value(mps, hamiltonian)
+
+println("E is $(E)")
 
 @save "SanderDM_Thesis_2324/gs_mps_wo_symmetries_trunc_$(trunc)_mass_$(mass)_v_$(v)_Delta_g_$(Delta_g)" mps envs
 

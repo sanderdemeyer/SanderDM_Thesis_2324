@@ -7,6 +7,7 @@ using Statistics
 using Plots
 using LaTeXStrings
 using Random
+using QuadGK
 
 include("get_X_tensors.jl")
 include("get_thirring_hamiltonian_symmetric.jl")
@@ -163,6 +164,48 @@ function samesiteEcorrelator_old(st, H, O, Xs, n, range, envs)
     return G
 end
 
+function samesiteEcorrelator_new(st, H, O, Xs, n, range, envs)
+    G = []
+    for i = (range)#.+1
+        println(i)
+        left_env = leftenv(envs, i, st)
+        right_env = rightenv(envs, i, st)
+        value_onsite = 0.0
+        for (j,k) in keys(H[i]) #[(1,H[i].odim)] #
+            # j = 1
+            # k = H[i].odim
+            term = @tensor left_env[j][16 5; 15] * Xs[mod1(i,length(Xs))][15;1] * st.AC[i][1 2; 13] * O[4; 2 7] * H[i][j,k][5 6; 4 12] * conj(O[6; 9 7]) * conj(Xs[mod1(i,length(Xs))][16;10]) * conj(st.AC[i][10 9; 11]) * right_env[k][13 12; 11]
+            println("for (j,k) = ($(j),$(k)), term = $(term)")
+            value_onsite += term
+        end
+        push!(G, value_onsite)
+    end
+    return G
+end
+
+function samesiteEcorrelator_newest(mps, H, O, middle, range)
+    G = []
+    mps_l = get_left_mps(mps, middle)
+    envs = environments(mps,H)
+    envs_l = environments(mps_l,H)
+    for i = range
+        println("i = $i")
+        left_env = leftenv(envs_l, i, mps_l)
+        right_env = rightenv(envs, i, mps)
+        value_onsite = 0.0
+        for (j,k) in keys(H[i]) #[(1,H[i].odim)] #
+            # j = 1
+            # k = H[i].odim
+            term = @tensor left_env[j][10 5; 1] * mps.AC[i][1 2; 13] * O[4; 2] * H[i][j,k][5 6; 4 12] * conj(O[6; 9]) * conj(mps.AC[i][10 9; 11]) * right_env[k][13 12; 11]
+            println("for (j,k) = ($(j),$(k)), term = $(term)")
+            value_onsite += term
+        end
+        push!(G, value_onsite)
+    end
+    return G
+end
+
+
 function samesiteEcorrelator(state::MPSKit.AbstractMPS, H, O, Xs, n::Int, js::AbstractRange{Int}, envs = environments(st,H), starters = starter_noX(state,H,js[1:1],n,envs), closures = closure(state,H,js,n,envs))
 
     ens = similar(js, eltype(eltype(state)))
@@ -234,10 +277,10 @@ function EcorrelationMatrix(st,L,n,H,O,Xs,envs=environments(st,H); new = false)
         closure = [rightenv(envs,L,st) for k = 1:L]
         numberops = samesiteEcorrelator(st,H,O,Xs,n,1:L,envs, starters, closure)
     else
-        numberops = samesiteEcorrelator_old(st,H,O,Xs,n,1:L,envs)
+        # numberops = samesiteEcorrelator_old(st,H,O,Xs,n,1:L,envs)
     end
     for i in 1:L
-        ε[i,i] = numberops[i]
+        ε[i,i] = 0.0 #numberops[i]
         ε[i+1:L,i] .= Ecorrelator(st,H,O,Xs,n,i,i+1:L,envs)#,starters,closures)
     end
     return Hermitian(ε,:L)
@@ -258,12 +301,18 @@ end
 function get_energy_matrices_right_moving(mps, H, O, N, m, σ, x₀; datapoints = N, Delta_g = 0.0, v = 0.0, new = false)
     Xs = get_X_tensors(mps.AL)
     envs = environments(mps, H)
-    corr_energy = (EcorrelationMatrix(mps, 2*N, 0, H, O, Xs, envs; new = new))
-    corr_energy_bigger = (EcorrelationMatrix(mps, 2*N+2, 0, H, O, Xs, envs; new = new))
+    corr_energy = transpose(EcorrelationMatrix(mps, 2*N, 0, H, O, Xs, envs; new = new))
+    corr_energy_bigger = transpose(EcorrelationMatrix(mps, 2*N+2, 0, H, O, Xs, envs; new = new))
     @assert norm(corr_energy - corr_energy_bigger[1:end-2,1:end-2]) < 1e-10
 
     # corr_energy = corr_energy_bigger[2:end-1,2:end-1]
     corr_energy = corr_energy_bigger[1:end-2,1:end-2]
+
+    # occupation matrix for H = H_unit: 1/2 op diagonaal
+    # fit beter voor lage momenta
+    # check convolutie
+    # grotere momenta wavepackets die naar links of rechts bewegen.
+    # wiki van Pauli matrices: exact diagonalisation die niet singulier is
 
     for i = 1:2*N
         for j = 1:2*N
@@ -305,8 +354,8 @@ function get_energy_matrices_right_moving(mps, H, O, N, m, σ, x₀; datapoints 
     return (X_finer, occ)
 end
 
-L = 40
-mass = 0.3
+L = 42
+mass = 00.0
 Delta_g = 0.0
 v = 0.0
 RAMPING_TIME = 5
@@ -320,8 +369,10 @@ frequency_of_saving = 5
 
 σ = 0.1
 x₀ = div(L,4)
+x₀ = 0.5*(x₀-L) # check
 
 @load "SanderDM_Thesis_2324/gs_mps_trunc_$(truncation)_mass_$(mass)_v_0.0_Delta_g_$(Delta_g)" mps
+
 
 N = div(L,2)-1
 X = [(2*pi)/N*i - pi for i = 0:N-1]
@@ -335,23 +386,85 @@ Plus_space = U1Space(1 => 1)
 Min_space = U1Space(-1 => 1)
 trivspace = U1Space(0 => 1)
 S⁺ = TensorMap([0.0+0.0im 1.0+0.0im; 0.0+0.0im 0.0+0.0im], pspace, pspace ⊗ Plus_space)
+S⁻ = TensorMap([0.0+0.0im 0.0+0.0im; 1.0+0.0im 0.0+0.0im], pspace, pspace ⊗ Min_space)
+
+function gauss(k, k₀, σ)
+    return (1/σ*sqrt(2*pi)) * exp(-(k-k₀)^2/(2*σ^2)) / (2*pi)
+end
 
 theoretical_energies = [(-1+2*(k<0.0))*sqrt(mass^2+sin(k)^2) for k in X]
+energies_convoluted = [quadgk(x -> (-1+2*(x<0.0))*sqrt(mass^2+sin(x)^2)*gauss(k, x, σ), -pi, k, pi; atol = 1e-10)[1] for k in X]
 
 H = get_thirring_hamiltonian_symmetric(mass, Delta_g, v; new = true)
-envs = environments(mps,H)
-Xs = get_X_tensors(mps.AL)
-# @load "operators_for_occupation_number" S⁺ S⁻ S_z_symm
-Ecorr = Ecorrelator(mps, H, S⁺, Xs, 4, 5, 6:10, envs)
-Ecorr2 = Ecorrelator(mps, H, S⁺, Xs, 2, 5, 6:10, envs)
+# spin = 1//2
+# pspace = U1Space(i => 1 for i in (-spin):spin)
+# S_z_symm = TensorMap([0.5+0.0im 0.0+0.0im; 0.0+0.0im -0.5+0.0im], pspace, pspace)
+# Hopping_term = (-1) * @mpoham sum(S_xx(){i, i + 1} + S_yy(){i, i + 1} for i in vertices(InfiniteChain(2)))
+# nothing_term = @mpoham sum(0.1*S_z_symm{i} for i in vertices(InfiniteChain(2)))
+# Hop = Hopping_term + nothing_term
+# Hopping_term[1][1,4] = mass*Sz_plus_12
 
-ϵ = EcorrelationMatrix(mps, N, 0, H, S⁺, Xs, envs; new = false)
+# Sz_plus_12 = TensorMap([1.0+0.0im 0.0+0.0im; 0.0+0.0im 0.0+0.0im], pspace, pspace)
+# Mass_term = (mass) * repeat(MPOHamiltonian([Sz_plus_12]),2)
+# for k = 1:Mass_term.odim-1
+#     Mass_term[i][k,Mass_term.odim] *= -1
+# end
+# H = Hopping_term + Mass_term
+
+envs = environments(mps,H)
+Xs = get_X_tensors(mps.AL) # geeft hetzelfde indien AC of AR
+
+data = [convert(Array, x) for x in Xs]
+ds = [size(dat)[1] for dat in data]
+Xs_asymm = [TensorMap(data[i], ℂ^ds[i], ℂ^ds[i]) for i = 1:length(Xs)]
+
+
+# @load "operators_for_occupation_number" S⁺ S⁻ S_z_symm
+# Ecorr = Ecorrelator(mps, H, S⁺, Xs, 4, 5, 6:10, envs)
+# Ecorr2 = Ecorrelator(mps, H, S⁺, Xs, 2, 5, 6:10, envs)
+
+unit_tensor = TensorMap([1.0+0.0im 0.0+0.0im; 0.0+0.0im 1.0+0.0im], pspace, pspace)
+H_unit = @mpoham sum((unit_tensor){i} for i in vertices(InfiniteChain(2)))
+
+samesite_unit = samesiteEcorrelator_new(mps, H_unit, S⁺, Xs, 0, 1:2*N, environments(mps,H_unit))
+samesite = samesiteEcorrelator_new(mps, H, S⁺, Xs, 0, 1:2*N, environments(mps,H))
+
+@load "N_20_mass_0_occupation_matrices_new" corr corr_energy
+
+
+break
+
+ϵ = EcorrelationMatrix(mps, N, 0, H_unit, S⁺, Xs, envs; new = false)
+
+σ = 0.1
+x₀ = div(N,2)
+
+(V₊,V₋) = V_matrix(X, mass)
+occ_matrix_energy = adjoint(V₊)*(corr_energy)*(V₊)
+occ_matrix = adjoint(V₊)*corr*(V₊)
+
+occ = zeros(Float64, N)
+occ_energy = zeros(Float64, N)
+for (i,k₀) in enumerate(X)
+    array = gaussian_array(X, k₀, σ, x₀)
+    occupation_number = ((array)*occ_matrix*adjoint(array))
+    occupation_number_energy = (array)*(occ_matrix_energy)*adjoint(array) / ((array)*occ_matrix*adjoint(array))
+    if (abs(imag(occupation_number)) > 1e-2)
+        println("Warning, complex number for occupation number: $(occupation_number)")
+    end
+    occ[i] = real(occupation_number)
+    occ_energy[i] = real(occupation_number_energy)
+end
+
+
+break
+
 # ϵ_new = EcorrelationMatrix(mps, N, 0, H, S⁺, Xs, envs; new = true)
 
 unit_tensor = TensorMap([1.0+0.0im 0.0+0.0im; 0.0+0.0im 1.0+0.0im], pspace, pspace)
 H_unit = @mpoham sum((unit_tensor){i} for i in vertices(InfiniteChain(2)))
 
-(X_finer, occ) = get_energy_matrices_right_moving(mps, H_unit, S⁺, N, mass, σ, x₀; datapoints = N, Delta_g = 0.0, v = 0.0)
+(X_finer, occ) = get_energy_matrices_right_moving(mps, H, S⁺, N, mass, σ, x₀; datapoints = N, Delta_g = 0.0, v = 0.0)
 
 offset = 0
 offset = real(mean(expectation_value(mps, H)))
