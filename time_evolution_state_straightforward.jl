@@ -16,9 +16,9 @@ end
 
 truncation = 1.5
 mass = 0.3
-Delta_g = 0.0
+Delta_g = -0.15
 v = 0.0
-
+bogoliubov = true
 
 (mps, gs_envs) = get_groundstate_wo_symmetries(mass, Delta_g, v, [50 100], truncation, truncation+3.0; number_of_loops=7)
 
@@ -44,17 +44,14 @@ X = [(2*pi)/N*i - pi for i = 0:N-1]
 σ = 2/(sqrt(N*pi))
 x₀ = div(N,2)
 
-(V₊,V₋) = V_matrix(X, mass)
+if bogoliubov
+    (V₊,V₋) = V_matrix_bogoliubov(mps, N, mass; symmetric = false)
+else
+    (V₊,V₋) = V_matrix(X, mass)
+end
 gaussian = gaussian_array(X, k, σ, x₀)
 
 wi = gaussian*adjoint(V₊)
-
-# plt = plot(1:N, real.(adjoint(gaussian)), label = "gaussian")
-# display(plt)
-
-# plt = plot(1:2*N, real.(adjoint(wi)), label = "wi")
-# display(plt)
-
 
 println("making mps's")
 mps_tensors = []
@@ -94,18 +91,13 @@ E = expectation_value(wpstate,hamiltonian)
 # display(plt)
 
 
-
-println("time_evolve")
-
-# Eafter = expectation_value(Ψ,hamiltonian)
-# plt = plot(1:N, avged(Eafter), label = "after")
-# display(plt)
-
 Es = []
 
 push!(Es, E)
 
-for i = 1:20
+println("time_evolve")
+
+for i = 1:5
     global Ψ
     global envs
     (Ψ, envs) = time_evolve!(Ψ, hamiltonian, t_span, alg, envs; verbose=true);
