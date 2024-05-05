@@ -25,7 +25,7 @@ function V_matrix(X, m)
         A = [m -(im/2)*(1-exp(im*k)); (im/2)*(1-exp(-im*k)) -m]
         eigen_result = eigen(A)
         eigenvectors_matrix = eigen_result.vectors
-        PN[2*i+1:2*i+2,2*i+1:2*i+2] = eigenvectors_matrix
+        PN[2*i+1:2*i+2,2*i+1:2*i+2] = eigenvectors_matrix # left = negative energy. Right = positive energy
     end
     
     V = F * PN
@@ -41,6 +41,56 @@ function V_matrix(X, m)
             push!(Vp_indices, 2*iₖ+2)
             push!(Vm_indices, 2*iₖ+1)
         end
+    end
+    permutation = vcat(Vp_indices, Vm_indices)
+
+    Vpermuted = zeros(ComplexF64, 2*N, 2*N)
+    for i = 1:2*N
+        for j = 1:2*N
+            Vpermuted[i,j] = V[i,permutation[j]]
+            # Vpermuted[i,permutation[j]] = V[i,j]
+        end
+    end
+    
+    V₋ = Vpermuted[:,1:N]
+    V₊ = Vpermuted[:,N+1:2*N]
+
+    return (V₊,V₋)
+end
+
+function V_matrix_pos_neg_energy(X, m)
+    N = length(X)
+
+    F = zeros(ComplexF64, 2*N, 2*N)
+    for i = 0:N-1
+        k = X[i+1]
+        for n = 0:N-1
+            F[2*n+1, 2*i+1] = 1/sqrt(N) * exp(-im*k*(n+1))
+            F[2*n+2, 2*i+2] = 1/sqrt(N) * exp(-im*k*(n+1))
+        end
+    end
+
+    PN = zeros(ComplexF64, 2*N, 2*N)
+    for i = 0:N-1
+        k = X[i+1]
+        if k == 0.0
+            PN[2*i+1:2*i+2,2*i+1:2*i+2] = [1.0 0.0; 0.0 1.0]
+        else
+            A = [m -(im/2)*(1-exp(im*k)); (im/2)*(1-exp(-im*k)) -m]
+            eigen_result = eigen(A)
+            eigenvectors_matrix = eigen_result.vectors
+            PN[2*i+1:2*i+2,2*i+1:2*i+2] = eigenvectors_matrix # left = negative energy. Right = positive energy
+        end
+    end
+    
+    V = F * PN
+
+    Vp_indices = []
+    Vm_indices = []
+    for iₖ = 0:N-1
+        k = X[iₖ+1]
+        push!(Vp_indices, 2*iₖ+2)
+        push!(Vm_indices, 2*iₖ+1)
     end
     permutation = vcat(Vp_indices, Vm_indices)
 
@@ -248,7 +298,28 @@ function get_energy_matrices_right_moving(mps, H, N, m, σ, x₀; datapoints = N
     return (X_finer, occ)
 end
 
-function get_occupation_matrix(mps, N, m; datapoints = N)
+function get_occupation_matrix(mps, N, m; datapoints = N, branch = "velocity")
+    @load "operators_for_occupation_number" S⁺ S⁻ S_z_symm
+    corr = zeros(ComplexF64, 2*N, 2*N)
+    for i = 2:2*N+1
+        corr_bigger = correlator(mps, S⁺, S⁻, S_z_symm, i, 2*N+2)
+        corr[i-1,:] = corr_bigger[2:2*N+1]
+    end
+    
+    X = [(2*pi)/N*i - pi for i = 0:N-1]
+    X_finer = [(2*pi)/datapoints*i - pi for i = 0:datapoints-1]
+    if branch == "velocity"
+        (V₊,V₋) = V_matrix(X, m)
+    elseif branch == "energy"
+        (V₊,V₋) = V_matrix_pos_neg_energy(X, m)
+    end
+
+    occ_matrix₊ = adjoint(V₊)*corr*(V₊)
+    occ_matrix₋ = adjoint(V₋)*corr*(V₋)
+    return (occ_matrix₊, occ_matrix₋, X, X_finer)
+end
+
+function get_occupation_matrix_bogoliubov(mps, N, m; datapoints = N, bogoliubov = true)
     @load "operators_for_occupation_number" S⁺ S⁻ S_z_symm
     corr = zeros(ComplexF64, 2*N, 2*N)
     for i = 2:2*N+1
@@ -259,10 +330,68 @@ function get_occupation_matrix(mps, N, m; datapoints = N)
     X = [(2*pi)/N*i - pi for i = 0:N-1]
     X_finer = [(2*pi)/datapoints*i - pi for i = 0:datapoints-1]
 
-    (V₊,V₋) = V_matrix(X, m)
+    N = length(X)
+
+    (F, PN) = V_matrix_unpermuted(X, m)
+    V = F * PN
+    diag_free = adjoint(V) * corr * V
+
+    Bog_matrix = zeros(ComplexF64, 2*N, 2*N)
+    for i = 1:N
+        Diag = get_2D_matrix(i, diag_free)
+        (eigval, A) = eigen(Diag)
+        Bog_matrix[2*i-1:2*i,2*i-1:2*i] = A
+    end
+
+    if bogoliubov
+        V = adjoint(Bog_matrix) * V * Bog_matrix
+    end
+    
+    Vpermuted = permute_left_right(X, N, V)
+    V₋ = Vpermuted[:,1:N]
+    V₊ = Vpermuted[:,N+1:2*N]
+
     occ_matrix₊ = adjoint(V₊)*corr*(V₊)
     occ_matrix₋ = adjoint(V₋)*corr*(V₋)
     return (occ_matrix₊, occ_matrix₋, X, X_finer)
+end
+
+function V_matrix_bogoliubov(mps, N, m; datapoints = N, symmetric = true)
+    if symmetric
+        @load "operators_for_occupation_number" S⁺ S⁻ S_z_symm
+    else
+        S⁺ = TensorMap([0.0+0.0im 1.0+0.0im; 0.0+0.0im 0.0+0.0im], ℂ^1 ⊗ ℂ^2, ℂ^2 ⊗ ℂ^1)
+        S⁻ = TensorMap([0.0+0.0im 0.0+0.0im; 1.0+0.0im 0.0+0.0im], ℂ^1 ⊗ ℂ^2, ℂ^2 ⊗ ℂ^1)
+        S_z_symm = TensorMap([0.5+0.0im 0.0+0.0im; 0.0+0.0im -0.5+0.0im], ℂ^2, ℂ^2)
+        end 
+    corr = zeros(ComplexF64, 2*N, 2*N)
+    for i = 2:2*N+1
+        corr_bigger = correlator(mps, S⁺, S⁻, S_z_symm, i, 2*N+2)
+        corr[i-1,:] = corr_bigger[2:2*N+1]
+    end
+    
+    X = [(2*pi)/N*i - pi for i = 0:N-1]
+    X_finer = [(2*pi)/datapoints*i - pi for i = 0:datapoints-1]
+
+    N = length(X)
+
+    (F, PN) = V_matrix_unpermuted(X, m)
+    V = F * PN
+    diag_free = adjoint(V) * corr * V
+
+    Bog_matrix = zeros(ComplexF64, 2*N, 2*N)
+    for i = 1:N
+        Diag = get_2D_matrix(i, diag_free)
+        (eigval, A) = eigen(Diag)
+        Bog_matrix[2*i-1:2*i,2*i-1:2*i] = A
+    end
+
+    V = adjoint(Bog_matrix) * V * Bog_matrix
+    
+    Vpermuted = permute_left_right(X, N, V)
+    V₋ = Vpermuted[:,1:N]
+    V₊ = Vpermuted[:,N+1:2*N]
+    return (V₊, V₋)
 end
 
 function get_F_matrix(X, N)
