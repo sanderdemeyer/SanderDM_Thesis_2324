@@ -7,7 +7,11 @@ import csv
 from scipy.optimize import curve_fit
 import json
 
-"""For plots of the renormalized values of c and m"""
+"""
+Use the file Dispersion_relation_fit_compare_closer.py instead!
+For plots of the renormalized values of c and m
+
+"""
 
 def function_fit_base(k0, x, m_fit, v_fit):
     return k0 + v_fit*x + x**2/(2*m_fit) - (2*v_fit*x**3)/3 - (4*m_fit*k0+3)/(24*m_fit**2*k0)*x**4
@@ -111,7 +115,7 @@ for (schmidt_number, schmidt_cut) in enumerate([3.5, 4.0, 4.5]):
         local_c_sigma_renorm = []
         for mass in [0.1*i for i in range(1, 7)]:
             for v in [0.15]:
-                (m_fit, v_fit, c_fit, m_fit_sigma, v_fit_sigma, c_fit_sigma) = fit_function(delta_g, v, mass, plot = True)
+                (m_fit, v_fit, c_fit, m_fit_sigma, v_fit_sigma, c_fit_sigma) = fit_function(delta_g, v, mass, plot = False)
                 local_mass_renorm.append(m_fit)
                 local_v_renorm.append(v_fit)
                 local_c_renorm.append(c_fit)

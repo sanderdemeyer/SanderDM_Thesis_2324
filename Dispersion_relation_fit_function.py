@@ -39,8 +39,8 @@ def function_4th_order_base(k0, x, a1, a2, a3, a4):
 def fit_function(delta_g, v, mass, data_folder, closer, plot = False):
 
     #file = f"Dispersion_Data/{data_folder}/Dispersion_m_{mass} _delta_g_{delta_g} _v_{v}"
-    #file = f"Dispersion_Data/{data_folder}/Dispersion_closer_m_{mass} _delta_g_{delta_g} _v_{v}"
-    file = f"Dispersion_Data/{data_folder}/Dispersion_pi_over_72_m_{mass} _delta_g_{delta_g} _v_{v}"
+    file = f"Dispersion_Data/{data_folder}/Dispersion_closer_m_{mass} _delta_g_{delta_g} _v_{v}"
+    # file = f"Dispersion_Data/{data_folder}/Dispersion_pi_over_72_m_{mass} _delta_g_{delta_g} _v_{v}"
 
     f = h5py.File(file, "r")
     energies = f["energies"][:]
@@ -88,24 +88,25 @@ def fit_function(delta_g, v, mass, data_folder, closer, plot = False):
     """
 
     if plot:
+        print(fr"$m = {round(mass,rounding)} \to {round(m_fit,rounding)}$, $c = 1 \to {round(c_fit,rounding)}$ and $v = {round(v,rounding)} \to {round(v_fit,rounding)}$ for $\Delta(g) = {round(delta_g,rounding)}$")
         plt.figure()
-        plt.scatter(k, np.array(energies), label = 'quasiparticle')
-        plt.plot(k_refined, exp, 'b-', label = '4th order taylor fit')
-        plt.plot(k_refined, exp_plus_sigma, 'b--', label = '4th order taylor fit')
-        plt.plot(k_refined, exp_minus_sigma, 'b--', label = '4th order taylor fit')
-        plt.plot(k_refined, exp_4th_order, 'r-', label = '4th order polynomial fit')
-        plt.plot(k_refined, exp_4th_order_plus_sigma, 'r--', label = '4th order polynomial fit')
-        plt.plot(k_refined, exp_4th_order_minus_sigma, 'r--', label = '4th order polynomial fit')
-        plt.xlabel('k')
-        plt.ylabel('energy')
+        plt.scatter(k, np.array(energies), label = 'data')
+        # plt.plot(k_refined, exp, 'b-', label = '4th order taylor fit')
+        # plt.plot(k_refined, exp_plus_sigma, 'b--', label = '4th order taylor fit')
+        # plt.plot(k_refined, exp_minus_sigma, 'b--', label = '4th order taylor fit')
+        plt.plot(k_refined, exp_4th_order, 'r-', label = 'polynomial fit')
+        plt.plot(k_refined, exp_4th_order_plus_sigma, 'r--')
+        plt.plot(k_refined, exp_4th_order_minus_sigma, 'r--')
+        plt.xlabel('k', fontsize = 15)
+        plt.ylabel('energy', fontsize = 15)
         plt.legend()
-        plt.title(fr"$m = {round(mass,rounding)} \to {round(m_fit,rounding)}$, $c = 1 \to {round(c_fit,rounding)}$ and $v = {round(v,rounding)} \to {round(v_fit,rounding)}$ for $\Delta(g) = {round(delta_g,rounding)}$")
+        # plt.title(fr"$m = {round(mass,rounding)} \to {round(m_fit,rounding)}$, $c = 1 \to {round(c_fit,rounding)}$ and $v = {round(v,rounding)} \to {round(v_fit,rounding)}$ for $\Delta(g) = {round(delta_g,rounding)}$")
         plt.show()
         string = fr'Fit_m = {mass}_v = {v}_\Delta(g) = {delta_g}.png'
         print(string)
         #plt.savefig(fr'Fit_m = {mass}_v = {v}_Delta(g) = {delta_g}.png')
 
-    return (m_fit, v_fit, c_fit, m_fit_sigma, v_fit_sigma, c_fit_sigma)
+    return (m_fit, v_fit, c_fit, m_fit_sigma, v_fit_sigma, c_fit_sigma, 0)
 
 def fit_function_factor(delta_g, v, mass, data_folder, factor, plot = False):
     ndp = 4 # Number of Data Points aan elke zijde rond k = 0, het totaal aantal datapunten waarmee gefit wordt, is dus 1+2*ndp
@@ -208,21 +209,42 @@ def fit_function_factor_efficient(delta_g, v, mass, data_folder, factor, plot = 
                 indices_to_index[-j*factor_here] = current_index+1
                 current_index += 2
 
-    #file = f"Dispersion_Data/{data_folder}/Dispersion_m_{mass} _delta_g_{delta_g} _v_{v}"
-    #file = f"Dispersion_Data/{data_folder}/Dispersion_closer_m_{mass} _delta_g_{delta_g} _v_{v}"
-    file = f"Dispersion_Data/{data_folder}/Dispersion_pi_over_72_v_0_m_{mass}_delta_g_{delta_g}_v_{v}_trunc_2.5"
+    if False:
+        anti_data_folder = "Data_pi_over_72_v_0_U1_-1"
+        #file = f"Dispersion_Data/{data_folder}/Dispersion_m_{mass} _delta_g_{delta_g} _v_{v}"
+        #file = f"Dispersion_Data/{data_folder}/Dispersion_closer_m_{mass} _delta_g_{delta_g} _v_{v}"
+        file = f"Dispersion_Data/{data_folder}/Dispersion_pi_over_72_v_0_m_{mass}_delta_g_{delta_g}_v_{v}_trunc_2.5"
+        anti_file = f"Dispersion_Data/{anti_data_folder}/Dispersion_pi_over_72_v_0_U1_-1_m_{mass}_delta_g_{delta_g}_v_{v}_trunc_2.5"
 
-    f = h5py.File(file, "r")
-    energies = f["energies"][:]
-    bounds = f["bounds"]
-    amount_data = np.shape(energies)[1]
-    index_k_0 = 0 #(amount_data-1)//2
-
+        f = h5py.File(file, "r")
+        anti_f = h5py.File(anti_file, "r")
+        energies = f["energies"][:]
+        anti_energies = anti_f["energies"][:]
+        bounds = f["bounds"]
+        amount_data = np.shape(energies)[1]
+        index_k_0 = 0 #(amount_data-1)//2
+    else:
+        data_folder = "Data_with_new_v"
+        file = f"Dispersion_Data/{data_folder}/Dispersion_newv_pi_over_72_v_{v}_m_{mass}_delta_g_{delta_g}_v_{v}_trunc_2.5"
+        f = h5py.File(file, "r")
+        energies = f["energies"][:]
+        anti_energies = f["anti_energies"][:]
+        bounds = f["bounds"]
+        amount_data = np.shape(energies)[1]
+        index_k_0 = 0 #(amount_data-1)//2
 
     #bounds = np.pi/12
     bounds = np.pi/72
 
     energies = [np.real(e[0]) for e in energies[0,:]]
+    anti_energies = [np.real(e[0]) for e in anti_energies[0,:]]
+
+    mu = (np.min(energies)-np.min(anti_energies))/2
+
+    energies = [e - mu for e in energies]
+    anti_energies = [e + mu for e in anti_energies]
+
+    assert (np.linalg.norm([energies[i]-anti_energies[i] for i in range(len(energies))]) < 10**(-3)), "Energies and anti-energies have different shape"
 
     bounds = (ndp+1)*smallest*factor*1.1
     # k = np.linspace(-bounds, bounds,amount_data)
@@ -280,13 +302,13 @@ def fit_function_factor_efficient(delta_g, v, mass, data_folder, factor, plot = 
         print(string)
         #plt.savefig(fr'Fit_m = {mass}_v = {v}_Delta(g) = {delta_g}.png')
 
-    return (m_fit, v_fit, c_fit, m_fit_sigma, v_fit_sigma, c_fit_sigma)
+    return (m_fit, v_fit, c_fit, m_fit_sigma, v_fit_sigma, c_fit_sigma, mu)
 
 
 def Dispersion_relation_fit(closer, way_of_fitting = "factor", plot = False):
     data_folder = "Data closer"
-    data_folder = "Data pi_over_72"
-    data_folder = "Data_pi_over_72_v_0"
+    # data_folder = "Data pi_over_72"
+    # data_folder = "Data_pi_over_72_v_0"
 
     if way_of_fitting == "factor":
         function_to_fit = fit_function_factor
@@ -315,19 +337,21 @@ def Dispersion_relation_fit(closer, way_of_fitting = "factor", plot = False):
     mass_sigma_renorm = np.zeros((schmidt_cut_number, delta_g_number-1, mass_number))
     v_sigma_renorm = np.zeros((schmidt_cut_number, delta_g_number-1, mass_number))
     c_sigma_renorm = np.zeros((schmidt_cut_number, delta_g_number-1, mass_number))
+    mu_values = np.zeros((schmidt_cut_number, delta_g_number-1, mass_number))
 
     for (schmidt_number, schmidt_cut) in enumerate([3.5, 4.0, 4.5]):
         #data_folder = f"Data_cut_{schmidt_cut}"
         for (delta_g_index,delta_g) in enumerate([-0.15*i for i in range(1, delta_g_number)]): # 4 should be 5 sometimes
             for (mass_index,mass) in enumerate([0.1*i for i in range(1, mass_number)]):
-                v = 0.0
-                (m_fit, v_fit, c_fit, m_fit_sigma, v_fit_sigma, c_fit_sigma) = function_to_fit(delta_g, v, mass, data_folder, closer, plot = plot)
+                v = 0.15
+                (m_fit, v_fit, c_fit, m_fit_sigma, v_fit_sigma, c_fit_sigma, mu) = function_to_fit(delta_g, v, mass, data_folder, closer, plot = plot)
                 mass_renorm[schmidt_number,delta_g_index,mass_index] = m_fit
                 v_renorm[schmidt_number,delta_g_index,mass_index] = v_fit
                 c_renorm[schmidt_number,delta_g_index,mass_index] = c_fit
                 mass_sigma_renorm[schmidt_number,delta_g_index,mass_index] = m_fit_sigma
                 v_sigma_renorm[schmidt_number,delta_g_index,mass_index] = v_fit_sigma
                 c_sigma_renorm[schmidt_number,delta_g_index,mass_index] = c_fit_sigma
+                mu_values[schmidt_number,delta_g_index,mass_index] = mu
 
     # for (schmidt_number, schmidt_cut) in enumerate([3.5, 4.0, 4.5]):
     #     #data_folder = f"Data_cut_{schmidt_cut}"
@@ -361,4 +385,4 @@ def Dispersion_relation_fit(closer, way_of_fitting = "factor", plot = False):
     # v_sigma_renorm = np.array(v_sigma_renorm)
     # c_sigma_renorm = np.array(c_sigma_renorm)
 
-    return (mass_renorm, v_renorm, c_renorm, mass_sigma_renorm, v_sigma_renorm, c_sigma_renorm)
+    return (mass_renorm, v_renorm, c_renorm, mass_sigma_renorm, v_sigma_renorm, c_sigma_renorm, mu_values)

@@ -1,4 +1,5 @@
 """
+Use this file!
 uses the file Disperion_relation_fit_function.py for fitting, this file then plots the results
 """
 
@@ -37,6 +38,7 @@ schmidt_cut_number = 3
 
 
 way_of_fitting = "factor_efficient"
+way_of_fitting = "closer"
 
 if way_of_fitting == "closer":
     max_index = 20
@@ -54,16 +56,18 @@ c_renorms = np.zeros((max_index,schmidt_cut_number, delta_g_number-1, mass_numbe
 mass_sigma_renorms = np.zeros((max_index,schmidt_cut_number, delta_g_number-1, mass_number))
 v_sigma_renorms = np.zeros((max_index,schmidt_cut_number, delta_g_number-1, mass_number))
 c_sigma_renorms = np.zeros((max_index,schmidt_cut_number, delta_g_number-1, mass_number))
+mu_values = np.zeros((max_index,schmidt_cut_number, delta_g_number-1, mass_number))
 
 for (ind, closer) in enumerate([1 + i for i in range(max_index)]):
     #(mass_renorm, v_renorm, c_renorm, mass_sigma_renorm, v_sigma_renorm, c_sigma_renorm) = drff.Dispersion_relation_fit(closer, way_of_fitting="closer")
-    (mass_renorm, v_renorm, c_renorm, mass_sigma_renorm, v_sigma_renorm, c_sigma_renorm) = drff.Dispersion_relation_fit(closer, way_of_fitting=way_of_fitting, plot = False)
+    (mass_renorm, v_renorm, c_renorm, mass_sigma_renorm, v_sigma_renorm, c_sigma_renorm, mu_value) = drff.Dispersion_relation_fit(closer, way_of_fitting=way_of_fitting, plot = True)
     mass_renorms[ind,:,:,:] = mass_renorm
     v_renorms[ind,:,:,:] = v_renorm
     c_renorms[ind,:,:,:] = c_renorm
     mass_sigma_renorms[ind,:,:,:] = mass_sigma_renorm
     v_sigma_renorms[ind,:,:,:] = v_sigma_renorm
     c_sigma_renorms[ind,:,:,:] = c_sigma_renorm
+    mu_values[ind,:,:,:] = mu_value
     # v_renorms.append(v_renorm)
     # c_renorms.append(c_renorm)
     # mass_sigma_renorms.append(mass_sigma_renorm)
@@ -77,9 +81,11 @@ for (ind, closer) in enumerate([1 + i for i in range(max_index)]):
 # v_sigma_renorms = np.array(v_sigma_renorms)
 # c_sigma_renorms = np.array(c_sigma_renorms)
 
+print(f"Mu values are \n {mu_values}")
+
 function_to_fit = fit_exp
 
-show = [] # plotting renormalized value of v when v = 0 makes no sense
+show = ["v"] # plotting renormalized value of v when v = 0 makes no sense
 error_bars = False
 extrapolation_in_factor = False
 parabola_factor_values = np.linspace(0, max_index, 1000)
@@ -114,7 +120,7 @@ if "v" in show:
                     plt.plot(parabola_factor_values, fitted_values(v_renorms[:,0,i,m_index-excluded_0]/(0.15)), label = 'fitted function')
             plt.xlabel(r'Scaling factor', fontsize = 15)
             plt.ylabel(r'$v_{eff}$', fontsize = 15)
-            plt.title(fr'Relative renormalization from $v = 0.15$ for schmidt-cut = {schmidt_cut}', fontsize = 15)
+            # plt.title(fr'Relative renormalization from $v = 0.15$ for schmidt-cut = {schmidt_cut}', fontsize = 15)
             plt.legend()
             plt.show()
 
@@ -148,13 +154,25 @@ if "c" in show:
             plt.legend()
             plt.show()
 
+print(v_renorms)
+print(mass_renorms)
+print(c_renorms)
+
 # print("intentionally breaking")
 # assert(0 == 1)
 for m_index in range(1, 7):
-    print("jfdkqlsmj")
-    print(np.shape([-0.15*i for i in range(1, delta_g_range)]))
-    print(np.shape(v_renorms[0,0,:,m_index-excluded_0]/(-0.15)))
-    print(np.shape(v_sigma_renorms[0,0,:,m_index-excluded_0]/(0.15)))
+    plt.scatter([-0.15*i for i in range(1, delta_g_range)], mu_values[0,0,:,m_index-excluded_0], label = f'mass = {round(m_index*0.1,2)}')
+    #plt.errorbar([-0.15*i for i in range(1, 5)], v_renorms[0,0,:,m_index-excluded_0]/(-0.15), v_sigma_renorms[0,0,:,m_index-excluded_0]/(0.15), label = f'mass = {round(m_index*0.1,2)}. schmidt = {schmidt_cut}', fmt="o")
+X = np.linspace(-0.7, 0.0, 1000)
+plt.plot(X, -X, color='black', linestyle='--')
+plt.xlabel(r'$\Delta (g)$', fontsize = 15)
+plt.ylabel(r'$\mu$', fontsize = 15)
+# plt.title(fr'Needed chemical potential $\mu$', fontsize = 15)
+#plt.title(fr'Relative renormalization from $v = 0.15$ for schmidt-cut = {schmidt_cut}', fontsize = 15)
+plt.legend(loc='upper right')
+plt.show()
+
+for m_index in range(1, 7):
     plt.errorbar([-0.15*i for i in range(1, delta_g_range)], v_renorms[0,0,:,m_index-excluded_0]/(-0.15), v_sigma_renorms[0,0,:,m_index-excluded_0]/(0.15), label = f'mass = {round(m_index*0.1,2)}', fmt="o")
     #plt.errorbar([-0.15*i for i in range(1, 5)], v_renorms[0,0,:,m_index-excluded_0]/(-0.15), v_sigma_renorms[0,0,:,m_index-excluded_0]/(0.15), label = f'mass = {round(m_index*0.1,2)}. schmidt = {schmidt_cut}', fmt="o")
 plt.axhline(y=1.0, color='black', linestyle='--')
@@ -175,6 +193,7 @@ plt.ylabel(r'$mass_{eff}$', fontsize = 15)
 plt.title(fr'Relative renormalization of the mass', fontsize = 15)
 #plt.title(fr'Relative renormalization the mass for schmidt-cut = {schmidt_cut}', fontsize = 15)
 plt.legend(loc='lower right')
+plt.ylim(top = 1.2, bottom=0)
 plt.show()
 
 for m_index in range(1, 7):
