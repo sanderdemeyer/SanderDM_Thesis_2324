@@ -14,63 +14,109 @@ include("get_X_tensors_wo_symmetries.jl")
 include("get_thirring_hamiltonian.jl")
 include("get_occupation_number_matrices.jl")
 include("get_thirring_hamiltonian_only_m.jl")
-include("get_groundstate_energy.jl")
 
-# code from Daan (unadapted)
+function energy(k, m)
+    if (k < 0.0)
+        return -sqrt(m^2+sin(k/2)^2)
+    else
+        return sqrt(m^2+sin(k/2)^2)
+    end
+end
 
-function samesiteEcorrelator(state::MPSKit.AbstractMPS, H, O, Xs, js::AbstractRange{Int}, envs = environments(state,H))
-    ens = zeros(ComplexF64, length(js))
-    for (index,j) in enumerate(js)
-        @plansor AC[-1 -2; -3] := (Xs[mod1(j,length(Xs))])[-1;1]*state.AC[j][1 2;-3]*O[-2;2]
-        left = leftenv(envs,j,state) * TransferMatrix(AC,H[j],AC)
-        right = rightenv(envs,j,state)
-        curr = 0.
-        for k in 1:length(left) #close the expression
-            curr += @tensor left[k][1; 3 2] * right[k][2 3;1]
+function samesiteEcorrelator_new(st, H, O, Xs, n, range, envs)
+    G = []
+    for i = (range)#.+1
+        println(i)
+        left_env = leftenv(envs, i, st)
+        right_env = rightenv(envs, i, st)
+        value_onsite = 0.0
+        for (j,k) in keys(H[i]) #[(1,H[i].odim)] #
+            # j = 1
+            # k = H[i].odim
+            term = @tensor left_env[j][16 5; 15] * Xs[mod1(i,length(Xs))][15;1] * st.AC[i][1 2; 13] * O[4; 2 7] * H[i][j,k][5 6; 4 12] * conj(O[6; 9 7]) * conj(Xs[mod1(i,length(Xs))][16;10]) * conj(st.AC[i][10 9; 11]) * right_env[k][13 12; 11]
+            println("for (j,k) = ($(j),$(k)), term = $(term)")
+            value_onsite += term
         end
-        ens[index] = curr
+        push!(G, value_onsite)
     end
-    return ens
+    return G
 end
 
-function Ecorrelator(state::MPSKit.AbstractMPS, H, O, Xs, i::Int, js::AbstractRange{Int}, envs = environments(state,H))
-    @assert first(js) == i+1
-    ens = zeros(ComplexF64, length(js))
-    @plansor ACx[-1 -2; -3] := (Xs[mod1(i,length(Xs))])[-1;1]*state.AC[i][1 2;-3]*O[-2;2]
-    left = leftenv(envs,i,state) * TransferMatrix(ACx, H[i], mps.AC[i])
-    for (index,j) in enumerate(js)
-        @plansor ARx[-1 -2; -3] := (Xs[mod1(j,length(Xs))])[-1;1]*state.AR[j][1 2;-3]*O[-2;2]
-        right = TransferMatrix(mps.AR[j], H[j], ARx) * rightenv(envs,j,state)
-        curr = 0.
-        for k in 1:length(left) #close the expression
-            curr += @tensor left[k][1; 3 2] * right[k][2 3;1]
+function get_left_mps(mps, middle)
+    AL_new = copy(mps.AL)
+    AC_new = copy(mps.AC)
+    AR_new = copy(mps.AR)
+    for w = 1:length(mps)
+        @tensor new_tensor_AL[-1 -2; -3] := mps.AL[w][-1 1; -3] * middle[-2; 1]
+        AL_new[w] = copy(new_tensor_AL)
+        @tensor new_tensor_AR[-1 -2; -3] := mps.AR[w][-1 1; -3] * middle[-2; 1]
+        AR_new[w] = copy(new_tensor_AR)
+        @tensor new_tensor_AC[-1 -2; -3] := mps.AC[w][-1 1; -3] * middle[-2; 1]
+        AC_new[w] = copy(new_tensor_AC)
+    end
+
+    return InfiniteMPS(AL_new, AR_new, mps.CR, AC_new)
+end
+
+function samesiteEcorrelator_newest(mps, H, O, middle, range)
+    G = []
+    mps_l = get_left_mps(mps, middle)
+    envs = environments(mps,H)
+    envs_l = environments(mps_l,H)
+    for i = range
+        println("i = $i")
+        left_env = leftenv(envs_l, i, mps_l)
+        right_env = rightenv(envs, i, mps)
+        value_onsite = 0.0
+        for (j,k) in keys(H[i]) #[(1,H[i].odim)] #
+            # j = 1
+            # k = H[i].odim
+            term = @tensor left_env[j][10 5; 1] * mps.AC[i][1 2; 13] * O[4; 2] * H[i][j,k][5 6; 4 12] * conj(O[6; 9]) * conj(mps.AC[i][10 9; 11]) * right_env[k][13 12; 11]
+            println("for (j,k) = ($(j),$(k)), term = $(term)")
+            value_onsite += term
         end
-        ens[index] = curr
-        left = left * TransferMatrix(mps.AR[j], H[j], mps.AR[j])
+        push!(G, value_onsite)
     end
-    return ens
+    return G
 end
 
-function EcorrelationMatrix(st,L,H,O,Xs,envs=environments(st,H))
-    ε = zeros(ComplexF64,L,L);
-    numberops = samesiteEcorrelator(st,H,O,Xs,1:L,envs)
-    println(numberops)
-    for i in 1:L
-        ε[i,i] = numberops[i]
-        offsite = Ecorrelator(st,H,O,Xs,i,i+1:L,envs)
-        ε[i+1:L,i] .= offsite
-        ε[i,i+1:L] .= adjoint(offsite)[1,:]
+function further_Ecorrelator_newest(mps, H, O, middle, i, L)
+    G = zeros(ComplexF64, L)
+    mps_l = get_left_mps(mps, middle)
+    envs = environments(mps,H)
+    envs_l = environments(mps_l,H)
+
+    @tensor ACS[-1 -2; -3] := mps.AC[i][-1 1; -3] * O[-2; 1]
+    @tensor ACO[-1 -2; -3] := mps.AC[i][-1 1; -3] * middle[-2; 1]
+    left = leftenv(envs_l, i, mps_l) * TransferMatrix(ACS, H[i], ACO)
+
+    for j = i+1:L
+        @tensor ARS[-1 -2; -3] := mps.AR[j][-1 1; -3] * O[-2; 1]
+        right = TransferMatrix(mps.AR[j], H[j], ARS) * rightenv(envs, j, mps)
+        curr = 0.0
+        for k in 1:length(right) #close the expression
+            term = @tensor left[k][1; 2 3] * right[k][3; 2 1]
+            if j < 7
+                println("j = $(j), k = $(k), term = $(term)")
+            end
+            curr += term
+        end
+        G[j] = curr
+
+        @tensor ARO[-1 -2; -3] := mps.AR[j][-1 1; -3] * middle[-2; 1]
+        left = left * TransferMatrix(mps.AR[j], H[j], ARO)
     end
-    return ε
+    return G    
 end
 
-function samesiteEcorrelator_old(state::MPSKit.AbstractMPS, H, O, Xs, n::Int, js::AbstractRange{Int}, envs = environments(st,H))
+
+
+function samesiteEcorrelator(state::MPSKit.AbstractMPS, H, O, Xs, n::Int, js::AbstractRange{Int}, envs = environments(st,H), starters = starter_noX(state,H,js[1:1],n,envs), closures = closure(state,H,js,n,envs))
 
     ens = similar(js, eltype(eltype(state)))
 
     if n < first(js) #start with n and transfer through to first(js)
-        # G = starters[first(js)] # adapted
-        G = leftenv(envs, first(js), state)
+        G = starters[first(js)]
     elseif n == first(js)
         G = leftenv(envs,n,state)
     else
@@ -103,8 +149,7 @@ function samesiteEcorrelator_old(state::MPSKit.AbstractMPS, H, O, Xs, n::Int, js
         elseif j < n
             @plansor AL1[-1 -2; -3] := Xs[mod1(j,length(Xs))][-1;1]*state.AL[j][1 2;-3]*O[-2;2]
             @plansor AL2[-1 -2; -3] := Xs[mod1(j,length(Xs))][-1;1]*state.AL[j][1 2;-3]*O[-2;2]
-            # GR = TransferMatrix(AL1,H[j],AL2) * closures[j] # adapted
-            GR = TransferMatrix(AL1,H[j],AL2) * rightenv(envs, j, state)
+            GR = TransferMatrix(AL1,H[j],AL2) * closures[j]
         else
             if n==j
                 @plansor AC1[-1 -2; -3] := Xs[mod1(j,length(Xs))][-1;1]*state.AC[j][1 2;-3]*O[-2;2]
@@ -128,7 +173,7 @@ function samesiteEcorrelator_old(state::MPSKit.AbstractMPS, H, O, Xs, n::Int, js
     return ens
 end
 
-function Ecorrelator_old(state::MPSKit.AbstractMPS, H, O, Xs, n::Int, i::Int, js::AbstractRange{Int}, envs = environments(st,H))
+function Ecorrelator(state::MPSKit.AbstractMPS, H, O, Xs, n::Int, i::Int, js::AbstractRange{Int}, envs = environments(st,H))
     first(js) > i || @error "i should be smaller than j ($i, $(first(js)))"
 
     ens = similar(js, eltype(eltype(state)))
@@ -204,19 +249,87 @@ function Ecorrelator_old(state::MPSKit.AbstractMPS, H, O, Xs, n::Int, i::Int, js
     return ens
 end
 
-function EcorrelationMatrix_old(st,L,n,H,O,Xs,envs=environments(st,H))
+function EcorrelationMatrix(st,L,n,H,O,Xs,envs=environments(st,H))
     ε = zeros(ComplexF64,L,L);
-    numberops = samesiteEcorrelator(st,H,O,Xs,1:L,envs)
-    println(numberops)
+    numberops = samesiteEcorrelator(st,H,O,Xs,n,1:L,envs,starters,closures)
     for i in 1:L
         ε[i,i] = numberops[i]
-        ε[i+1:L,i] .= Ecorrelator(st,H,O,Xs,n,i,i+1:L,envs)
+        ε[i+1:L,i] .= Ecorrelator(st,H,O,Xs,n,i,i+1:L,envs,starters,closures)
     end
     Hermitian(ε,:L)
 end
 
+function WavePacket(varmatrixs,normmatrix,m,k0,Δk,x0)
+    halfL   = length(varmatrixs);
+    _,Vh,ks = Vexact(floor(Int,0.5halfL),m);
+    fp,Ew   = generate_fp(size(Vh)[2],m,k0,Δk,x0);
+    #@show Ew
+    wi      =  Vh*fp;
+    Ens     = map(var->wi'*var*wi / (wi'*normmatrix*wi),varmatrixs);
+    N       =  real(1-wi'*normmatrix*wi)
+    #Ew = real(sum(Ens) - Ens[1]*100) #Ens[1] is stand-in for E0
+    return N,Ens,Ew
+end
 
-# convertion. Own code
+L = 42
+mass = 30.0
+Delta_g = 0.0
+v = 0.0
+RAMPING_TIME = 5
+dt = 0.01
+v_max = 1.5
+spatial_sweep = 10
+truncation = 2.0
+nr_steps = 1500
+kappa = 0.6
+frequency_of_saving = 5
+
+σ = 0.1
+x₀ = div(L,4)
+x₀ = 0.5*(x₀-L) # check
+
+@load "SanderDM_Thesis_2324/gs_mps_trunc_$(truncation)_mass_$(mass)_v_0.0_Delta_g_$(Delta_g)" mps
+@load "SanderDM_Thesis_2324/gs_mps_wo_symmetries_trunc_$(truncation)_mass_$(mass)_v_$(v)_Delta_g_$(Delta_g)" mps
+
+if mass == 0.0
+    @load "N_20_mass_0_occupation_matrices_new" corr corr_energy
+elseif mass == 30.0
+    @load "N_20_mass_30_occupation_matrices_new" corr corr_energy
+else
+    @assert 0 == 1 
+end
+
+N = div(L,2)-1
+X = [(2*pi)/N*i - pi for i = 0:N-1]
+X_new = [(2*pi)/N*i for i = 0:N-1]
+Es = [energy(k,mass) for k in X]
+
+S⁺ = TensorMap([0.0+0.0im 1.0+0.0im; 0.0+0.0im 0.0+0.0im], ℂ^2, ℂ^2)
+S⁻ = TensorMap([0.0+0.0im 0.0+0.0im; 1.0+0.0im 0.0+0.0im], ℂ^2, ℂ^2)
+S_z_symm = TensorMap([0.5+0.0im 0.0+0.0im; 0.0+0.0im -0.5+0.0im], ℂ^2, ℂ^2)
+
+
+H = get_thirring_hamiltonian_only_m(mass)
+H_m_0 = get_thirring_hamiltonian_only_m(0.0)
+unit_tensor = TensorMap([1.0+0.0im 0.0+0.0im; 0.0+0.0im 1.0+0.0im], ℂ^2, ℂ^2)
+H_unit = @mpoham sum((unit_tensor){i} for i in vertices(InfiniteChain(2)))
+
+envs = environments(mps,H)
+
+middle = (2*im)*S_z_symm
+# same_site = samesiteEcorrelator_newest(mps, H, S⁻, middle, 1:2*N)
+same_site = samesiteEcorrelator_newest(mps, H, S⁺, -middle, 1:2*N)
+same_site_unit = samesiteEcorrelator_newest(mps, H_unit, S⁺, -middle, 1:2*N)
+
+# EcorrelationMatrix(mps,L,0,H,S⁻,Xs,environments(mps,H))
+
+# Gp = further_Ecorrelator_newest(mps, H_unit, S⁺, (-2*im*S_z_symm), 1, 2*N)
+# Gm = further_Ecorrelator_newest(mps, H_unit, S⁻, (2*im*S_z_symm), 1, 2*N)
+
+Gm_H = further_Ecorrelator_newest(mps, H_m_0, S⁻, (-2*im*S_z_symm), 1, 2*N)
+
+break
+# Starting from symmetries
 
 function convert_to_array(tensor::TensorMap)
     data = convert(Array, tensor)
@@ -229,7 +342,7 @@ function convert_to_array(tensor::TensorMap)
     end
 end
 
-function convert_to_array(tensors::Union{PeriodicArray{A}, Vector{A}}) where {A <: TensorMap}
+function convert_to_array(tensors::PeriodicArray{A}) where {A <: TensorMap}
     return [convert_to_array(tensor) for tensor in tensors]
 end
 
@@ -241,23 +354,6 @@ function remove_symmetries(mps::InfiniteMPS)
     return InfiniteMPS(ALS, ARS, CRS, ACS)
 end
 
-(truncation, mass) = [(2.5, 1.0) (2.0, 30.0)][2]
-
-Delta_g = 0.0
-v = 0.0
-
-N = 20
-
-if mass == 0.0
-    @load "N_20_mass_0_occupation_matrices_new" corr corr_energy
-elseif mass == 30.0
-    @load "N_20_mass_30_occupation_matrices_new" corr corr_energy
-elseif mass == 1.0
-    @load "N_20_mass_1_occupation_matrices_new" corr corr_energy
-else
-    @assert 0 == 1 
-end
-
 spin = 1//2
 pspace = U1Space(i => 1 for i in (-spin):spin)    
 Plus_space = U1Space(1 => 1)
@@ -265,16 +361,9 @@ S⁺ = TensorMap([0.0+0.0im 1.0+0.0im; 0.0+0.0im 0.0+0.0im], pspace, pspace ⊗ 
 S⁻ = TensorMap([0.0+0.0im 0.0+0.0im; 1.0+0.0im 0.0+0.0im], Plus_space ⊗ pspace, pspace)
 S_z_symm = TensorMap([0.5+0.0im 0.0+0.0im; 0.0+0.0im -0.5+0.0im], pspace, pspace)
 
-Sp_asym = TensorMap([0.0+0.0im 1.0+0.0im; 0.0+0.0im 0.0+0.0im], ℂ^2, ℂ^2)
-Sm_asym = TensorMap([0.0+0.0im 0.0+0.0im; 1.0+0.0im 0.0+0.0im], ℂ^2, ℂ^2)
-
-
 @load "SanderDM_Thesis_2324/gs_mps_trunc_$(truncation)_mass_$(mass)_v_0.0_Delta_g_$(Delta_g)" mps
 Xs = get_X_tensors(mps.AL) # geeft hetzelfde indiend AC of AR
 
-H = get_thirring_hamiltonian(mass, Delta_g, v)
-unit_tensor = TensorMap([1.0+0.0im 0.0+0.0im; 0.0+0.0im 1.0+0.0im], ℂ^2, ℂ^2)
-H_unit = @mpoham sum((unit_tensor){i} for i in vertices(InfiniteChain(2)))
 
 
 @tensor check11[-1 -2; -3] := inv(Xs[1])[-1; 1] * mps.AC[1][1 -2; 2] * Xs[2][2; -3]
@@ -296,22 +385,8 @@ S_z_symm = convert_to_array(S_z_symm)
 @assert norm(check11-check12) < 1e-10
 @assert norm(check21-check22) < 1e-10
 
-println("Started with calculating the correlation matrix")
-
-# for i = 1:2*N
-#     println(corr[i,i])
-# end
-
-same_site = samesiteEcorrelator(mps, H, Sp_asym, Xs, 1:2*N)
-same_site_min = samesiteEcorrelator(mps, H, Sm_asym, Xs, 1:2*N)
-
-same_site_one = samesiteEcorrelator(mps, H_unit, Sp_asym, Xs, 1:2*N)
-same_site_one_min = samesiteEcorrelator(mps, H_unit, Sm_asym, Xs, 1:2*N)
-#=
 
 
-
-corr_energy_mps = EcorrelationMatrix(mps,2*N,0,H_unit,Sp_asym,Xs)
 
 
 
@@ -330,107 +405,90 @@ corr_energy_mps = EcorrelationMatrix(mps,2*N,0,H_unit,Sp_asym,Xs)
 # @assert norm(check31-check32) < 1e-10
 # @assert norm(check41-check42) < 1e-10
 
+break
+# Without MPOHam
 
-X = [(2*pi)/N*i - pi for i = 0:N-1]
+J = [1.0 -1.0]
+Sz_plus_12 = S_z() + 0.5*id(domain(S_z()))
+
+S⁺ = TensorMap([0.0+0.0im 1.0+0.0im; 0.0+0.0im 0.0+0.0im], ℂ^2, ℂ^2)
+S⁻ = TensorMap([0.0+0.0im 0.0+0.0im; 1.0+0.0im 0.0+0.0im], ℂ^2, ℂ^2)
+@tensor operator_threesite[-1 -2 -3; -4 -5 -6] := S⁺[-1; -4] * S_z()[-2; -5] * S⁻[-3; -6]
+@tensor operator_threesite_final[-1 -2 -3; -4 -5 -6] := operator_threesite[-1 -2 -3; -4 -5 -6] - operator_threesite[-3 -2 -1; -6 -5 -4]
+
+O_mass = am_tilde_0 * Sz_plus_12
+O_hop = (-1) * (S_xx() + S_yy())
+@tensor O_int[-1 -2; -3 -4] := (Delta_g) * Sz_plus_12[-1; -3] * Sz_plus_12[-2; -4]
+
+
+
+
+break
+#tests
+
+mass_operator = mass*(S_z() + 0.5*id(domain(S_z())))
+mass_operator_conj = mass*(0.5*id(domain(S_z())) - S_z())
+
+for w = 1:length(mps)
+    test1 = @tensor mps.AC[w][1 2; 4] * mass_operator[3; 2] * conj(mps.AC[w][1 3; 4])
+    test2 = @tensor mps.AC[w][1 2; 6] * S⁺[3; 2] * mass_operator[4; 3] * S⁻[5; 4] * conj(mps.AC[w][1 5; 6])
+    println(test1)
+    println(test2)
+    test3 = @tensor mps.AC[w][1 2; 4] * mass_operator_conj[3; 2] * conj(mps.AC[w][1 3; 4])
+    test4 = @tensor mps.AC[w][1 2; 6] * S⁺[3; 2] * mass_operator_conj[4; 3] * S⁻[5; 4] * conj(mps.AC[w][1 5; 6])
+    println(test3)
+    println(test4)
+end
+
+break
+Ecorr = Ecorrelator(mps, H, S⁺, Xs, 4, 5, 6:10, envs)
+Ecorr2 = Ecorrelator(mps, H, S⁺, Xs, 2, 5, 6:10, envs)
+
+unit_tensor = TensorMap([1.0+0.0im 0.0+0.0im; 0.0+0.0im 1.0+0.0im], pspace, pspace)
+H_unit = @mpoham sum((unit_tensor){i} for i in vertices(InfiniteChain(2)))
+
+same_site = samesiteEcorrelator_new(mps, H_unit, S⁻, Xs, 0, 1:2*N, environments(mps,H_unit))
+same_site_H = samesiteEcorrelator_new(mps, H, S⁻, Xs, 0, 1:2*N, environments(mps,H))
+
+
+break
+
+ϵ = EcorrelationMatrix(mps, 2*N, 0, H_unit, S⁺, Xs_inverse, environments(mps,H_unit); new = false)
+ϵ = ComplexF64.(copy(ϵ))
+for i = 1:2*N
+    for j = 1:2*N
+        if i != j
+            ϵ[i,j] /= -(abs(i-j)+1)
+        end
+    end
+end
+
+ϵ_energy = EcorrelationMatrix(mps, 2*N, 0, H, S⁺, Xs_inverse, environments(mps,H); new = false)
+ϵ_energy = ComplexF64.(copy(ϵ_energy))
+for i = 1:2*N
+    for j = 1:2*N
+        if i != j
+            ϵ_energy[i,j] /= -(abs(i-j)+1)
+        end
+    end
+end
+
 σ = 0.1
 x₀ = div(N,2)
 
-=#
-
-X = [(2*pi)/N*i - pi for i = 0:N-1]
-σ = 0.1
-x₀ = div(N,2)
-
-(V₊,V₋) = V_matrix_pos_neg_energy(X, mass)
-# (V₊,V₋) = V_matrix(X, mass)
+(V₊,V₋) = V_matrix(X, mass)
 occ_matrix_energy = adjoint(V₊)*(corr_energy)*(V₊)
 occ_matrix = adjoint(V₊)*corr*(V₊)
-occ_matrix_energy_min = adjoint(V₋)*(corr_energy)*(V₋)
-occ_matrix_min = adjoint(V₋)*corr*(V₋)
-
-@assert adjoint(V₊)*(V₊) ≈ I
-@assert adjoint(V₋)*(V₋) ≈ I
-@assert (V₊)*adjoint(V₊) + (V₋)*adjoint(V₋) ≈ I
-
-# E0 = get_groundstate_energy(mass, Delta_g, v, [10 30], 2.5, 10^(-2.5))[1] # /2 want per site
-corr_energy_real = corr_energy + E0*(corr)
 
 occ = zeros(Float64, N)
 occ_energy = zeros(Float64, N)
 for (i,k₀) in enumerate(X)
     array = gaussian_array(X, k₀, σ, x₀)
     occupation_number = ((array)*occ_matrix*adjoint(array))
-    occupation_number_energy = 0.0
-    occupation_number_energy = (array)*((occ_matrix_energy)+E0*(-I + 2*occ_matrix))*adjoint(array) / ((array)*(I - occ_matrix)*adjoint(array))
+    occupation_number_energy = (array)*(occ_matrix_energy)*adjoint(array) / ((array)*occ_matrix*adjoint(array))
     if (abs(imag(occupation_number)) > 1e-2)
         println("Warning, complex number for occupation number: $(occupation_number)")
     end
     occ[i] = real(occupation_number)
     occ_energy[i] = real(occupation_number_energy)
 end
-
-# plt = plot(X, occ_energy .- (factor)*E0); 
-# theor = [sqrt(mass^2+sin(k/2)^2) for k in X]
-# plot!(X, theor, label = "theory")
-# display(plt);
-
-ϵs = zeros(ComplexF64, N, N)
-for (i,k) in enumerate(X)
-    ϵs[i,i] = sqrt(mass^2 + sin(k/2)^2)
-end
-ϵs_double = zeros(ComplexF64, 2*N, 2*N)
-for (i,k) in enumerate(X)
-    ϵs_double[2*i-1,2*i-1] = sqrt(mass^2 + sin(k/2)^2)
-    ϵs_double[2*i,2*i] = -sqrt(mass^2 + sin(k/2)^2)
-end
-
-help = (V₊) * adjoint(V₊)
-helping = zeros(ComplexF64, 2*N)
-for i = 1:2*N
-    helping[i] = help[i,i]
-end
-
-@assert V₊ * adjoint(V₊) + V₋ * adjoint(V₋) ≈ I
-@assert adjoint(V₊) * V₊ ≈ I
-
-factor = N
-
-expected_energy1 =  (ϵs)
-expected_energy = (ϵs)  + I * factor*E0 # <c_i H c_j^dagger>
-expected = V₊ * adjoint(V₊)
-
-
-# expected_energy_double = adjoint(V₊) * (ϵs_double * (V₊))  + E0 * adjoint(V₊) * (V₊)
-# expected_double = adjoint(V₊) * (V₊)
-break
-
-corr_energy2 = EcorrelationMatrix(mps,2*N,H,Sm_asym,Xs)
-corr2 = EcorrelationMatrix(mps,2*N,H_unit,Sm_asym,Xs)
-
-(V₊,V₋) = V_matrix_pos_neg_energy(X, mass)
-(V₊,V₋) = V_matrix(X, mass)
-occ_matrix = adjoint(V₊) * corr * V₊
-occ_matrix_energy = adjoint(V₊) * corr_energy * V₊
-occ_matrix2 = adjoint(V₊) * corr2 * V₊
-occ_matrix_energy2 = adjoint(V₊) * corr_energy2 * V₊
-
-occ = zeros(Float64, N)
-occ_energy = zeros(Float64, N)
-for (i,k₀) in enumerate(X)
-    array = adjoint(gaussian_array(X, k₀, σ, x₀))
-    # arraym = V₋ * adjoint(gaussian_array(X, k₀, σ, x₀))
-    println(size(array))
-    occupation_number = (adjoint(array)*occ_matrix*(array))
-    occupation_number_energy = adjoint(array)*(occ_matrix_energy)*(array)# / (adjoint(array)*(corr)*(array))
-    if (abs(imag(occupation_number)) > 1e-2)
-        println("Warning, complex number for occupation number: $(occupation_number)")
-    end
-    occ[i] = real(occupation_number)
-    occ_energy[i] = real(occupation_number_energy)
-end
-
-occ_energy[11] *= -1
-plt = plot(X, -occ_energy); 
-theor = [sqrt(mass^2+sin(k/2)^2) for k in X]
-plot!(X, theor, label = "theory")
-display(plt);
