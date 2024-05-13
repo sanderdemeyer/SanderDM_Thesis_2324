@@ -28,24 +28,7 @@ function get_rotation(k, m)
     a12 = (parameters[1,2])
     a21 = (parameters[2,1])
     a22 = (parameters[2,2])
-    # ax = -sin(k/2)*cos(k/2)
-    # ay = sin(k/2)^2
-    # az = m
-    # a = sqrt(abs(ax)^2+abs(ay)^2+abs(az)^2)
-    # @assert abs(a - sqrt(m^2+sin(k/2)^2)) < 1e-8
-    # denominator = sqrt(2*a*(az+a))
-    # b11 = (im*ay-ax)/denominator
-    # b21 = (az+a)/denominator
-    # b12 = (az+a)/denominator
-    # b22 = (ax+im*ay)/denominator
-    # new = [b11 b12; b21 b22]
-    # new2 = inv(new)
-    # # println(inv(new) - adjoint(new))
-    # a11 = new2[1,1]
-    # a12 = new2[1,2]
-    # a21 = new2[2,1]
-    # a22 = new2[2,2]
-    return (a11,a12,a21,a22)#, (b11,b12,b21,b22))
+    return (a11,a12,a21,a22)
 end
 
 function get_rotation_vector(mass, X)

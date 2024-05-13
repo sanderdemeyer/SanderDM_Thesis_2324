@@ -19,7 +19,7 @@ function theoretical_maximum(m, c)
 end
 
 am_tilde_0 = 0.3
-Delta_g = 0.0
+Delta_g = -0.45
 v = 0.0
 trunc = 3.0
 
@@ -54,6 +54,23 @@ if plotting
     display(plt)
 end
 
+min_particle = minimum(energies_real)
+min_antiparticle = minimum(anti_energies_real)
+gap = (min_particle - min_antiparticle)/2
+
+energies_real = energies_real .- gap
+anti_energies_real = anti_energies_real .+ gap
+
+if plotting
+    plt = plot(k_values, energies_real, label="particles", xlabel="k", ylabel="energies", linewidth=2)
+    plot!(k_values, anti_energies_real, label="anti-particles", linewidth=2)
+    plot!(k_values, zero_energies_real, label="zero-particles", linewidth=2)
+    plot!(k_values, [sqrt(am_tilde_0^2+sin(k)^2) for k in k_values], label="theory")
+    plot!()
+    display(plt)
+end
+
+
 Es = [energies_real, anti_energies_real, zero_energies_real]
 for j = 1:3
     max_derivative = 0.0
@@ -68,7 +85,8 @@ for j = 1:3
     println("max_der = $(max_derivative) for i = $(max_index)")
 end
 
-println([(Es[1][i+1]-Es[1][i])/dk for i = 1:length(Es[1])-1])
+# println([(Es[1][i+1]-Es[1][i])/dk for i = 1:length(Es[1])-1])
 
 println("theoretical max for c = 1 is $(theoretical_maximum(am_tilde_0,1))")
 println("theoretical max for renormalized c is $(theoretical_maximum(am_tilde_0,c_renorms[string(am_tilde_0)][string(-0.44999999999999996)]))")
+println("theoretical max for renormalized values is $(theoretical_maximum(am_tilde_0*mass_renorms[string(am_tilde_0)][string(-0.44999999999999996)],c_renorms[string(am_tilde_0)][string(-0.44999999999999996)]))")

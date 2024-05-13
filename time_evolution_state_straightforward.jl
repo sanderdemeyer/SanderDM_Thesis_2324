@@ -38,7 +38,7 @@ hamiltonian = get_thirring_hamiltonian(mass, Delta_g, v)
 
 N = 40
 
-k = -1.5
+k = 1.0
 X = [(2*pi)/N*i - pi for i = 0:N-1]
 σ = 0.7
 σ = 2/(sqrt(N*pi))

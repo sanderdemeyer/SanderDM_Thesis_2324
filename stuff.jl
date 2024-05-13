@@ -15,6 +15,43 @@ include("get_thirring_hamiltonian.jl")
 include("get_thirring_hamiltonian_symmetric.jl")
 
 
+files = readdir("bhole_test_time_evolution_variables_N_70_mass_1.0_delta_g_0.0_ramping_0.03_dt_0.01_nrsteps_400_vmax_1.5_kappa_0.6_trunc_2.0_D_18_savefrequency_3.jld2")
+t_end = parse(Float64, files[end][1:end-5])
+for e in files
+    println(parse(Float64, e[1:end-5]))
+end
+
+function spatial_ramping_S(i, ib, iw, κ)
+    value = 0.5 - (1/(1+exp(2*κ*(i-ib)))+1/(1+exp(2*κ*(iw-i))))/2
+    if value < 1e-4
+        return 0.0
+    elseif value > 1 - 1e-4
+        return 1.0
+    end
+    return value
+end
+
+@load "2.5.jld2" MPSs
+
+tot_bonddim = 0
+for i = 1:2
+    # global tot_bonddim
+    tot_bonddim += dims((MPSs.AL[i]).codom)[1] + dims((MPSs.AL[i]).dom)[1]
+end
+
+
+κ = 0.5
+N = 120
+ib = 50
+iw = 95
+
+lijst = [spatial_ramping_S(i, ib, iw, κ) for i = 1:N]
+
+plt = plot(1:N, lijst)
+display(plt)
+
+break
+
 spin = 1//2
 pspace = U1Space(i => 1 for i in (-spin):spin)
 S_z_symm2 = TensorMap([0.5+0.0im 0.0+0.0im; 0.0+0.0im -0.5+0.0im], pspace, pspace)

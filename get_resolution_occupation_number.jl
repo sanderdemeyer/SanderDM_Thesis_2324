@@ -32,7 +32,7 @@ function energy(k, m)
     end
 end
 
-L = 200
+L = 20
 m = 0.3
 Delta_g = 0.0
 v = 0.0
@@ -48,7 +48,7 @@ frequency_of_saving = 5
 
 @load "SanderDM_Thesis_2324/gs_mps_trunc_$(truncation)_mass_$(m)_v_0.0_Delta_g_$(Delta_g)" mps
 
-N = 10
+N = div(L,2)-1
 X = [(2*pi)/N*i - pi for i = 0:N-1]
 X_new = [(2*pi)/N*i for i = 0:N-1]
 Es = [energy(k,m) for k in X]
@@ -65,12 +65,25 @@ unit_tensor = TensorMap([1.0+0.0im 0.0+0.0im; 0.0+0.0im 1.0+0.0im], pspace, pspa
 H_unit = @mpoham sum((unit_tensor){i} for i in vertices(InfiniteChain(2)))
 H = get_thirring_hamiltonian_symmetric(m, Delta_g, v)
 
-(X_finer_L, occ_L) = get_occupation_number_matrices_left_moving(mps, N, m, σ, x₀)
+# (X_finer_L, occ_L) = get_occupation_number_matrices_left_moving(mps, N, m, σ, x₀)
 (X_finer_R, occ_R) = get_occupation_number_matrices_right_moving(mps, N, m, σ, x₀)
 (X_finer_en, energy_L) = get_energy_matrices_right_moving(mps, H, N, m, σ, x₀)
 (X_finer_new, energy_L_new) = get_energy_matrices_right_moving(mps, H_unit, N, m, σ, x₀)
 
-theoretical_energies = [sqrt(m^2+sin(k)^2) for k in X_finer_L]
+theoretical_energies = [(-1+2*(k<0.0))*sqrt(m^2+sin(k/2)^2) for k in X_finer_en]
+
+plt = scatter(X_finer_en, energy_L, label = "data")
+scatter!(X_finer_en, theoretical_energies, label = "theoretical")
+display(plt)
+
+# a = (theoretical_energies[1]-theoretical_energies[3])/(energy_L[1]-energy_L[3])
+# b = theoretical_energies[1] - a*energy_L[1]
+
+# plt = scatter(X_finer_en, energy_L .* a .+ b, label = "data")
+# scatter!(X_finer_en, theoretical_energies, label = "theoretical")
+# display(plt)
+
+
 # occ_number_data_eff = get_occupation_number_matrices(mps, L, m_eff, σ, x₀; V = "old")
 
 # for i = div(N,2)-5:div(N,2)+5
@@ -80,13 +93,13 @@ theoretical_energies = [sqrt(m^2+sin(k)^2) for k in X_finer_L]
 # end
 
 
-κ = (kappa/2)*v_max
-Es_fd = [fermi_dirac(ω, κ) for ω in Es]
+# κ = (kappa/2)*v_max
+# Es_fd = [fermi_dirac(ω, κ) for ω in Es]
 
-plt = scatter(X_finer_L, occ_L, label="occupation number for m", xlabel="k", ylabel="occupation", linewidth=2, title="m = $(m), m_eff = $(round(m_eff,digits=4))")
-display(plt)
-plt = scatter(X_finer_R, occ_R, label="occupation number for m", xlabel="k", ylabel="occupation", linewidth=2, title="m = $(m), m_eff = $(round(m_eff,digits=4))")
-display(plt)
+# plt = scatter(X_finer_L, occ_L, label="occupation number for m", xlabel="k", ylabel="occupation", linewidth=2, title="m = $(m), m_eff = $(round(m_eff,digits=4))")
+# display(plt)
+# plt = scatter(X_finer_R, occ_R, label="occupation number for m", xlabel="k", ylabel="occupation", linewidth=2, title="m = $(m), m_eff = $(round(m_eff,digits=4))")
+# display(plt)
 
 break
 

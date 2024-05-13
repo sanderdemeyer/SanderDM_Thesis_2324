@@ -30,8 +30,8 @@ println(k_values)
 v = 0.0
 trunc = 2.5
 
-for delta_g_index = 1:4
-    for mass_index = 1:6
+for delta_g_index = [2 4]
+    for mass_index = 2:6
         Delta_g = -0.15*delta_g_index
         am_tilde_0 = 0.1*mass_index
 
@@ -39,11 +39,11 @@ for delta_g_index = 1:4
         hamiltonian = get_thirring_hamiltonian_symmetric(am_tilde_0, Delta_g, v)
         gs_energy = expectation_value(mps, hamiltonian);
 
-        (energies,Bs) = excitations(hamiltonian,QuasiparticleAnsatz(), k_values,mps,envs, sector = Irrep[U₁](1));
+        (energies,Bs) = excitations(hamiltonian,QuasiparticleAnsatz(), k_values,mps,envs, sector = Irrep[U₁](-1));
 
         print("Done with excitations")
 
-        @save "Dispersion_pi_over_72_v_0_m_$(am_tilde_0)_delta_g_$(Delta_g)_v_$(v)_trunc_$(trunc)" gs_energy bounds energies Bs bound
+        @save "Dispersion_pi_over_72_v_0_U1_-1_m_$(am_tilde_0)_delta_g_$(Delta_g)_v_$(v)_trunc_$(trunc)" gs_energy bounds energies Bs bound
     end
 end
 

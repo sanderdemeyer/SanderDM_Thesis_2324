@@ -14,27 +14,32 @@ function avged(lijst)
     return [real(lijst[2*j+1]+lijst[2*j+2])/2 for j = 0:N-1]
 end
 
-L = 160
-κ = 0.5
-truncation = 2.0
-D = 25
+L = 140
+κ = 1.0
+truncation = 1.5
+D = 18
 # spatial_sweep = i_end-i_start
 
 frequency_of_saving = 5
 RAMPING_TIME = 5
 
-dt = 0.1
-number_of_timesteps = 5000 #3000 #7000
+dt = 0.2
+number_of_timesteps = 6000 #3000 #7000
 am_tilde_0 = 0.03
 Delta_g = 0.0 # voor kleinere g, betere fit op dispertierelatie. Op kleinere regio fitten. Probeer voor delta_g = 0 te kijken of ik exact v of -v kan fitten in de dispertierelatie
 
-v_max = 1.5
+v_max = -2.0
 
 
-test = true
+test = false
+only_black_hole = true
+
 if test
     # name = "bw_hole_trivial_time_evolution_variables_N_$(L)_mass_$(am_tilde_0)_delta_g_$(Delta_g)_ramping_$(RAMPING_TIME)_dt_$(dt)_nrsteps_$(number_of_timesteps)_vmax_$(v_max)_kappa_$(κ)_trunc_$(truncation)_savefrequency_$(frequency_of_saving).jld2"
     name = "bw_hole_trivial_time_evolution_variables_N_$(L)_mass_$(am_tilde_0)_delta_g_$(Delta_g)_ramping_$(RAMPING_TIME)_dt_$(dt)_nrsteps_$(number_of_timesteps)_vmax_$(v_max)_kappa_$(κ)_trunc_$(truncation)_D_$(D)_savefrequency_$(frequency_of_saving).jld2"
+elseif only_black_hole
+    # name = "bhole_trivial_time_evolution_variables_N_$(L)_mass_$(am_tilde_0)_delta_g_$(Delta_g)_ramping_$(RAMPING_TIME)_dt_$(dt)_nrsteps_$(number_of_timesteps)_vmax_$(v_max)_kappa_$(κ)_trunc_$(truncation)_D_$(D)_savefrequency_$(frequency_of_saving).jld2"
+    name = "bhole_time_evolution_variables_N_$(L)_mass_$(am_tilde_0)_delta_g_$(Delta_g)_ramping_$(RAMPING_TIME)_dt_$(dt)_nrsteps_$(number_of_timesteps)_vmax_$(v_max)_kappa_$(κ)_trunc_$(truncation)_D_$(D)_savefrequency_$(frequency_of_saving).jld2"
 else
     # name = "bw_hole_time_evolution_variables_N_$(L)_mass_$(am_tilde_0)_delta_g_$(Delta_g)_ramping_$(RAMPING_TIME)_dt_$(dt)_nrsteps_$(number_of_timesteps)_vmax_$(v_max)_kappa_$(κ)_trunc_$(truncation)_savefrequency_$(frequency_of_saving).jld2"
     name = "bw_hole_time_evolution_variables_N_$(L)_mass_$(am_tilde_0)_delta_g_$(Delta_g)_ramping_$(RAMPING_TIME)_dt_$(dt)_nrsteps_$(number_of_timesteps)_vmax_$(v_max)_kappa_$(κ)_trunc_$(truncation)_D_$(D)_savefrequency_$(frequency_of_saving).jld2"
@@ -49,7 +54,7 @@ N = div(L,2)-1
 
 σ = pi/L/4
 σ = 0.1784124116152771
-x₀ = 125 # div(L,2)
+x₀ = 75 # div(L,2)
 points_below_zero = 250
 nodp = N
 
@@ -60,7 +65,7 @@ times = [dt*frequency_of_saving*n_t for n_t in 0:number_of_savepoints-1]
 
 check_occupation_numbers = true
 
-skip_frequency = 5
+skip_frequency = 2
 for n_t = [skip_frequency*i for i = 0:div(number_of_savepoints,skip_frequency)] #1:number_of_savepoints
     println("started for $(n_t)")
     t = dt*frequency_of_saving*n_t
@@ -83,7 +88,7 @@ for n_t = [skip_frequency*i for i = 0:div(number_of_savepoints,skip_frequency)] 
 
     # println(typeof(mps))
     if check_occupation_numbers
-        (X_finer, occ_number_data) = get_occupation_number_matrices_left_moving(mps.middle, N, am_tilde_0, σ, x₀; datapoints = nodp)
+        (X_finer, occ_number_data) = get_occupation_number_matrices_right_moving(mps.middle, N, am_tilde_0, σ, x₀; datapoints = nodp)
         push!(occ_numbers, occ_number_data)
         push!(X_finers, X_finer)
     end
@@ -97,7 +102,7 @@ break
 iL = 1
 iR = N
 plt = plot(iL:iR, Es_full[1][iL:iR], legend = true)#, label = "t = $(0.0)")
-for i = [i for i = 1:number_of_savepoints]
+for i = [i for i = 1:div(number_of_savepoints,skip_frequency)+1]
     plot!(iL:iR, Es_full[i][iL:iR])#, label = "t = $(0.5*i)")
 end
 xlabel!("Position")
@@ -143,8 +148,8 @@ display(plt)
 
 
 times = [dt*frequency_of_saving*skip_frequency*i for i = 0:div(number_of_savepoints,skip_frequency)]
-z1 = 50
-z2 = 63
+z1 = 35
+z2 = 45
 plt = plot(times, [Es_full[j][z1] for j = 1:div(number_of_savepoints,skip_frequency)+1], label  = "i=$(z1)")
 for z0 = z1+1:z2
     println(z0)
@@ -177,10 +182,11 @@ fd = [1/(1+exp(-2*pi*e/(kappa))) for e in E_finers]
 # plt = scatter(E_finers, occ_numbers[1]./maximum(occ_numbers[1]), label = "t = 0")
 # scatter!(E_finers, occ_numbers[end]./maximum(occ_numbers[end]), label = "t = 75")
 plt = scatter(E_finers, occ_numbers[1], label = "t = 0")
-plot_frequency = 5
-for i = [skip_frequency*frequency_of_saving*i for i = 2:div(number_of_savepoints,skip_frequency*skip_frequency)+1] #1:number_of_savepoints
-    scatter!(E_finers, occ_numbers[i], label = "t = $(dt*plot_frequency)")
-end
+plot_frequency = 1
+# for i = 2:div(number_of_savepoints,skip_frequency*plot_frequency)+1 #1:number_of_savepoints
+#     scatter!(E_finers, occ_numbers[i], label = "t = $(round(i*dt*plot_frequency*skip_frequency*frequency_of_saving,digits=3))")
+# end
+scatter!(E_finers, occ_numbers[end]./maximum(occ_numbers[end]), label = "t = end")
 plot!(E_finers, fd, label = "Expected fermi-dirac")
 plot!([am_tilde_0], seriestype="vline", line=(:black,1.0,:dash), label = "E = m")
 plot!([-am_tilde_0], seriestype="vline", line=(:black,1.0,:dash), label = "E = -m")
@@ -200,7 +206,7 @@ display(plt)
 
 occ_t = []
 for i = 1:length(occ_numbers)
-    push!(occ_t, occ_numbers[i][div(N,2)-5])
+    push!(occ_t, occ_numbers[i][div(N,2)-5]/maximum(occ_numbers[i]))
 end
 plt = scatter((1:length(occ_numbers))*5, occ_t)
 xlabel!("Time")

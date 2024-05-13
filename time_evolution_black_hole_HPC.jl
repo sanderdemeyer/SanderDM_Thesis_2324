@@ -1,4 +1,4 @@
-include("dep_helper.jl")
+# include("dep_helper.jl")
 
 using LinearAlgebra
 # using Base
@@ -38,8 +38,8 @@ function my_finalize(t, Ψ, H, envs, name)
     return (Ψ, envs)
 end
 
-N = 140 # Number of sites
-D = 22
+N = 4 # Number of sites
+D = 4
 
 @assert N % 2 == 0
 
@@ -47,9 +47,9 @@ D = 22
 ib = div(2*N,3)
 
 dt = 0.1
-number_of_timesteps = 5000 #3000 #7000
+number_of_timesteps = 4 #3000 #7000
 t_end = dt*number_of_timesteps
-frequency_of_saving = 5
+frequency_of_saving = 2
 RAMPING_TIME = 5
 
 am_tilde_0 = 0.03
@@ -57,7 +57,7 @@ Delta_g = 0.0 # voor kleinere g, betere fit op dispertierelatie. Op kleinere reg
 v = 0.0
 v_max = -2.0
 
-truncation = 1.5
+truncation = 0.5
 
 lijst_ramping = [spatial_ramping_S(i, ib, κ) for i = 1:N]
 f(t) = sign(v_max)*min(abs(v_max), t/RAMPING_TIME)
@@ -114,7 +114,7 @@ WindowH = LazySum([H1, MultipliedOperator(H2, f)])
 envs = environments(Ψ, WindowH);
 
 # Stuff for files and directories
-name = "bhole_trivial_time_evolution_variables_N_$(N)_mass_$(am_tilde_0)_delta_g_$(Delta_g)_ramping_$(RAMPING_TIME)_dt_$(dt)_nrsteps_$(number_of_timesteps)_vmax_$(v_max)_kappa_$(κ)_trunc_$(truncation)_savefrequency_$(frequency_of_saving)"
+name = "bhole_time_evolution_variables_N_$(N)_mass_$(am_tilde_0)_delta_g_$(Delta_g)_ramping_$(RAMPING_TIME)_dt_$(dt)_nrsteps_$(number_of_timesteps)_vmax_$(v_max)_kappa_$(κ)_trunc_$(truncation)_D_$(D)_savefrequency_$(frequency_of_saving)"
 
 if isfile(name*".jld2")
     println("Warning - file already exists -- appending with new")

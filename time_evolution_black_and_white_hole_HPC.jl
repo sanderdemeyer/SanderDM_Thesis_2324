@@ -103,7 +103,7 @@ pspace = U1Space(i => 1 for i in (-spin):spin)
 Sz = TensorMap([0.5+0.0im 0.0+0.0im; 0.0+0.0im -0.5+0.0im], pspace, pspace)
 
 # Construct initial MPS and hamiltonian
-Ψ = WindowMPS(gs_mps,N; fixleft=true, fixright=true); # state is a windowMPS
+Ψ = WindowMPS(gs_mps,N; fixleft=true, fixright=false); # state is a windowMPS
 
 H1 = Window(H_without_v, repeat(H_without_v, div(N,2)), H_without_v)
 H2 = Window(0*Interaction_v_term, Interaction_v_term_window, 0*Interaction_v_term)

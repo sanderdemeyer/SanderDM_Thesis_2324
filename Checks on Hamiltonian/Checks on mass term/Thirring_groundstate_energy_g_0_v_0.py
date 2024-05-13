@@ -8,11 +8,11 @@ import csv
 
 # f = h5py.File("SanderDM_Thesis_2324/Thirring_groundstate_energy_g_0_v_0", "r")
 #f = h5py.File("Thirring_groundstate_energy_g_0_v_0", "r")
-f30 = h5py.File("Checks on Hamiltonian/Checks on mass term/Check_mass_symmetric_D_30", "r")
-f50 = h5py.File("Checks on Hamiltonian/Checks on mass term/Check_mass_symmetric_D_50", "r")
-f50_more = h5py.File("Checks on Hamiltonian/Checks on mass term/Check_mass_symmetric_D_50_more_spaces", "r")
-f_dynamic_2 = h5py.File("Checks on Hamiltonian/Checks on mass term/Check_mass_term_symmetric_trunc_2", "r")
-f_dynamic_4 = h5py.File("Checks on Hamiltonian/Checks on mass term/Check_mass_term_symmetric_trunc_4", "r")
+f30 = h5py.File("SanderDM_Thesis_2324/Checks on Hamiltonian/Checks on mass term/Check_mass_symmetric_D_30", "r")
+f50 = h5py.File("SanderDM_Thesis_2324/Checks on Hamiltonian/Checks on mass term/Check_mass_symmetric_D_50", "r")
+f50_more = h5py.File("SanderDM_Thesis_2324/Checks on Hamiltonian/Checks on mass term/Check_mass_symmetric_D_50_more_spaces", "r")
+f_dynamic_2 = h5py.File("SanderDM_Thesis_2324/Checks on Hamiltonian/Checks on mass term/Check_mass_term_symmetric_trunc_2", "r")
+f_dynamic_4 = h5py.File("SanderDM_Thesis_2324/Checks on Hamiltonian/Checks on mass term/Check_mass_term_symmetric_trunc_4", "r")
 m_range = 20
 masses = np.linspace(0,1,m_range)
 #energies = f["energies"][:]
@@ -32,7 +32,7 @@ m = 0
 Z_over_a = 1
 
 def f(k, m_0):
-    return -1/(4*np.pi)*np.sqrt(m_0**2 + (Z_over_a*np.sin(k/2))**2)
+    return -1/(2*np.pi)*np.sqrt(m_0**2 + (Z_over_a*np.sin(k/2))**2)
 
 def test(x):
     return x
@@ -47,7 +47,7 @@ for i, m in enumerate(m_values):
     print(i)
     print(m)
     E_gs_values[i] = integrate.quad(lambda k: f(k,m), -np.pi, np.pi)[0]
-    E_gs_values[i] = 2*integrate.quad(lambda k: f(k,m), -np.pi, 0)[0]
+    # E_gs_values[i] = 2*integrate.quad(lambda k: f(k,m), -np.pi, 0)[0]
 
 print(m_values)
 print(E_gs_values)
@@ -59,7 +59,7 @@ print(E_gs_values)
 # #plt.scatter(masses, energies_nonsym, label = 'VUMPS, not symmetric')
 # plt.scatter(masses, energies_dynamic_2, label = 'VUMPS, dynamic trunc 2')
 plt.plot(m_values, E_gs_values, label = 'analytical solution', c = 'orange')
-plt.scatter(masses, energies_dynamic_4, label = 'Own calculations with VUMPS')
+plt.scatter(masses, 2*energies_dynamic_4, label = 'Own calculations with VUMPS')
 plt.xlabel('mass', fontsize = 15)
 plt.ylabel(r'$ E_{gs} $', fontsize = 15)
 #plt.title(r"Ground state energy density for $ g = 0 $, $ v = 0 $")

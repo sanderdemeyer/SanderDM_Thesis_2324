@@ -37,7 +37,7 @@ function my_finalize(t, Ψ, H, envs, name)
 end
 
 N = 20 # Number of sites
-D = 20
+D = 16
 
 @assert N % 2 == 0
 
@@ -131,7 +131,7 @@ end
 
 # Algorithms for time evolution
 left_alg = right_alg = TDVP()
-middle_alg =  TDVP();
+middle_alg =  TDVP2(; trscheme=truncdim(D));
 alg = WindowTDVP(;left=left_alg,middle=middle_alg,right=right_alg,
             finalize=(t, Ψ, H, envs) -> my_finalize(t, Ψ, H, envs, name));
 t_span = 0:dt:t_end

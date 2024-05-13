@@ -10,12 +10,12 @@ using Random
 
 include("get_occupation_number_matrices.jl")
 
-N = 100
+N = 40
 X = [(2*pi)/N*i - pi for i = 0:N-1]
 σ = 0.1
 x₀ = div(N,2)
 
-mass = 30.0
+mass = 1.0
 
 (V₊,V₋) = V_matrix(X, mass) #
 
@@ -56,7 +56,7 @@ for (i,k₀) in enumerate(X)
         println("Warning, complex number for occupation number: $(occupation_number)")
     end
     occ[i] = real(occupation_number)
-    occupation_number_energy = (array) * adjoint(V₊) * transpose(occ_matrix_energy-E0_extensive*I) * V₊ * adjoint(array)# / (1-occupation_number)
+    occupation_number_energy = (array) * adjoint(V₊) * transpose(occ_matrix_energy-E0_extensive*I) * V₊ * adjoint(array)#  / (occupation_number)
     occ_energy[i] = real(occupation_number_energy)
 end
 
@@ -65,4 +65,4 @@ plt = scatter(X, occ_energy)
 scatter!(X, expected)
 display(plt)
 
-@save "SanderDM_Thesis_2324/correct_occupation_matrices_N_$(N)_mass_$(mass)" occ_matrix occ_matrix_energy
+# @save "SanderDM_Thesis_2324/correct_occupation_matrices_N_$(N)_mass_$(mass)" occ_matrix occ_matrix_energy

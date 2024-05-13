@@ -23,40 +23,48 @@ mass = 0.3
 Delta_g = 0.0
 v = 0.0
 
-N = 40
-dt = 0.8
-t_end = 4.0
-k = -1.5
+N = 40 # 50
+dt = 0.2 # 0.8
+t_end = 1.0 # 0.8
+k = 1.0
 sigma = 0.178
 
-left_moving = False
+dt = 0.8
+t_end = 4.0
+N = 40
+
+left_moving = True
 
 if left_moving:
-    file = f"SanderDM_Thesis_2324/test_wavepacket_left_moving_gs_mps_wo_symmetries_trunc_{truncation}_mass_{mass}_v_{v}_Delta_g_{Delta_g}_N_{N}_k_{k}_sigma_{sigma}_dt_{dt}_tend_{t_end}_dict.h5"
+    k = 1.5
+    file = f"test_wavepacket_left_moving_gs_mps_wo_symmetries_trunc_{truncation}_mass_{mass}_v_{v}_Delta_g_{Delta_g}_N_{N}_k_{k}_sigma_{sigma}_dt_{dt}_tend_{t_end}_dict.h5"
 else:
-    file = f"SanderDM_Thesis_2324/test_wavepacket_gs_mps_wo_symmetries_trunc_{truncation}_mass_{mass}_v_{v}_Delta_g_{Delta_g}_N_{N}_k_{k}_sigma_{sigma}_dt_{dt}_tend_{t_end}_dict.h5"
-    file = f"SanderDM_Thesis_2324/test_wavepacket_right_moving_gs_mps_wo_symmetries_trunc_{truncation}_mass_{mass}_v_{v}_Delta_g_{Delta_g}_N_{N}_k_{k}_sigma_{sigma}_dt_{dt}_tend_{t_end}_dict.h5"
+    k = -1.5
+    file = f"test_wavepacket_gs_mps_wo_symmetries_trunc_{truncation}_mass_{mass}_v_{v}_Delta_g_{Delta_g}_N_{N}_k_{k}_sigma_{sigma}_dt_{dt}_tend_{t_end}_dict.h5"
+    file = f"test_wavepacket_right_moving_gs_mps_wo_symmetries_trunc_{truncation}_mass_{mass}_v_{v}_Delta_g_{Delta_g}_N_{N}_k_{k}_sigma_{sigma}_dt_{dt}_tend_{t_end}_dict.h5"
 
 
 # file = h5py.File(file)
 
+maximum = 5
+
 Es = []
 with h5py.File(file, 'r') as f:
     # Read data
-    for i in range(1,6):
+    for i in range(1,maximum+1):
         key1_data = f[f"Es{i}"][:]
         Es.append(avged([e[0] for e in key1_data]))
 
 times, L = np.shape(Es)
 X = range(L)
 
-excluded = 5
+excluded = 8 # 9
 
 b = [1, 2, 3, 4]
 
 
 for i in range(times):
-    plt.plot([2*x for x in X[excluded:L-1-excluded]], Es[i][excluded:L-1-excluded], label = f"t = {i}")
+    plt.plot([x for x in X[excluded:L-1-excluded]], Es[i][excluded:L-1-excluded], label = f"t = {round(t_end*i,2)}")
 # plt.plot(X, [gaussian(x, 22, 3, 0.25, -0.36) for x in X])
 plt.xlabel("Position i", fontsize = 15)
 plt.ylabel("Averaged energy", fontsize = 15)
@@ -65,7 +73,7 @@ plt.show()
 
 optimal_values = []
 for i in range(times):
-    popt, pcov = curve_fit(gaussian, X[excluded:L-1-excluded], Es[i][excluded:L-1-excluded], p0 = [22, 3, 0.25, -0.36])
+    popt, pcov = curve_fit(gaussian, X[excluded:L-1-excluded], Es[i][excluded:L-1-excluded], p0 = [12, 3, 0.25, -0.36])
     optimal_values.append(popt)
 optimal_values = np.array(optimal_values)
 print(optimal_values)
@@ -86,12 +94,15 @@ v_expected = np.sin(k)/(4*E)
 print(f"v expected from theory is {v_expected}")
 print(f"Relative error is {abs(v_expected-v_data)/v_expected}")
 
-plt.scatter([t_end*i for i in range(times)], [2*optimal_values[i][0] for i in range(times)], label = "data")
-plt.plot([t_end*i for i in range(times)], [2*linear(x, popt[0], popt[1]) for x in [t_end*i for i in range(times)]], label = "fit", color = "black")
+plt.scatter([t_end*i for i in range(times)], [optimal_values[i][0] for i in range(times)], label = "data")
+plt.plot([t_end*i for i in range(times)], [linear(x, popt[0], popt[1]) for x in [t_end*i for i in range(times)]], label = "fit", color = "black")
 plt.xlabel("Time", fontsize = 15)
 plt.ylabel("Peak position", fontsize = 15)
 plt.legend()
 plt.show()
+
+
+"""
 
 plt.plot([t_end*i for i in range(times)], [optimal_values[i][1] for i in range(times)])
 plt.title("sigma")
@@ -105,3 +116,4 @@ plt.show()
 plt.plot([t_end*i for i in range(times)], [optimal_values[i][3] for i in range(times)])
 plt.title("E0")
 plt.show()
+"""
