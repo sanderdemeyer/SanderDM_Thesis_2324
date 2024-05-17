@@ -7,7 +7,6 @@ using JLD2
 using TensorKit
 using MPSKitModels, TensorKit, MPSKit
 using Statistics
-using Plots
 
 include("get_thirring_hamiltonian_symmetric_separate.jl")
 include("get_thirring_hamiltonian_symmetric.jl")
@@ -27,37 +26,40 @@ function spatial_ramping_S(i, ib, κ)
 end
 
 function my_finalize(t, Ψ, H, envs, name)
-    if (((t) % (frequency_of_saving*dt) == 0.0) && (t != 0.0))
+    normalize!(Ψ.middle)
+    check = (t) % (frequency_of_saving*dt)
+    if (((check < 1e-5) || (frequency_of_saving*dt - check < 1e-5)) && (t != 0.0))
         println("Currently saving for t = $(t)")
         file = jldopen(name*"/$(t).jld2", "w")
         file["MPSs"] = copy(Ψ)
         file["Es"] = expectation_value(Ψ, H(t), envs)
+        file["Es0"] = expectation_value(Ψ, H(0.0), envs)
         file["sigmaz"] = expectation_value(Ψ.middle, Sz)
         close(file)
     end
     return (Ψ, envs)
 end
 
-N = 4 # Number of sites
-D = 4
+N = 180 # Number of sites
+D = 14
 
 @assert N % 2 == 0
 
 κ = 1.0
 ib = div(2*N,3)
 
-dt = 0.1
-number_of_timesteps = 4 #3000 #7000
+dt = 0.05
+number_of_timesteps = 2500 #3000 #7000
 t_end = dt*number_of_timesteps
-frequency_of_saving = 2
+frequency_of_saving = 3
 RAMPING_TIME = 5
 
-am_tilde_0 = 0.03
+am_tilde_0 = 0.06
 Delta_g = 0.0 # voor kleinere g, betere fit op dispertierelatie. Op kleinere regio fitten. Probeer voor delta_g = 0 te kijken of ik exact v of -v kan fitten in de dispertierelatie
 v = 0.0
-v_max = -2.0
+v_max = 6.0
 
-truncation = 0.5
+truncation = 2.5
 
 lijst_ramping = [spatial_ramping_S(i, ib, κ) for i = 1:N]
 f(t) = sign(v_max)*min(abs(v_max), t/RAMPING_TIME)
@@ -105,7 +107,7 @@ pspace = U1Space(i => 1 for i in (-spin):spin)
 Sz = TensorMap([0.5+0.0im 0.0+0.0im; 0.0+0.0im -0.5+0.0im], pspace, pspace)
 
 # Construct initial MPS and hamiltonian
-Ψ = WindowMPS(gs_mps,N; fixleft=true, fixright=true); # state is a windowMPS
+Ψ = WindowMPS(gs_mps,N; fixleft=true, fixright=false); # state is a windowMPS
 
 H1 = Window(H_without_v, repeat(H_without_v, div(N,2)), H_without_v)
 H2 = Window(0*Interaction_v_term, Interaction_v_term_window, Interaction_v_term)
@@ -114,7 +116,8 @@ WindowH = LazySum([H1, MultipliedOperator(H2, f)])
 envs = environments(Ψ, WindowH);
 
 # Stuff for files and directories
-name = "bhole_time_evolution_variables_N_$(N)_mass_$(am_tilde_0)_delta_g_$(Delta_g)_ramping_$(RAMPING_TIME)_dt_$(dt)_nrsteps_$(number_of_timesteps)_vmax_$(v_max)_kappa_$(κ)_trunc_$(truncation)_D_$(D)_savefrequency_$(frequency_of_saving)"
+# name = "bhole_time_evolution_variables_N_$(N)_mass_$(am_tilde_0)_delta_g_$(Delta_g)_ramping_$(RAMPING_TIME)_dt_$(dt)_nrsteps_$(number_of_timesteps)_vmax_$(v_max)_kappa_$(κ)_trunc_$(truncation)_D_$(D)_savefrequency_$(frequency_of_saving)"
+name = "bhole_test_time_evolution_variables_N_$(N)_mass_$(am_tilde_0)_delta_g_$(Delta_g)_ramping_$(RAMPING_TIME)_dt_$(dt)_nrsteps_$(number_of_timesteps)_vmax_$(v_max)_kappa_$(κ)_trunc_$(truncation)_D_$(D)_savefrequency_$(frequency_of_saving)"
 
 if isfile(name*".jld2")
     println("Warning - file already exists -- appending with new")
@@ -132,7 +135,7 @@ end
 
 # Algorithms for time evolution
 left_alg = right_alg = TDVP()
-middle_alg =  TDVP();
+middle_alg =  TDVP2(; trscheme=truncdim(D));
 alg = WindowTDVP(;left=left_alg,middle=middle_alg,right=right_alg,
             finalize=(t, Ψ, H, envs) -> my_finalize(t, Ψ, H, envs, name));
 t_span = 0:dt:t_end
@@ -142,6 +145,7 @@ t = 0.0
 file = jldopen(name*"/0.0.jld2", "w")
 file["MPSs"] = copy(Ψ)
 file["Es"] = expectation_value(Ψ, WindowH(t), envs)
+file["Es0"] = expectation_value(Ψ, WindowH(0), envs)
 close(file)
 
 # Perform time evolution

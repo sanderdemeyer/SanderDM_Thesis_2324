@@ -1,3 +1,5 @@
+# include("dep_helper.jl")
+
 using LinearAlgebra
 # using Base
 using KrylovKit
@@ -14,13 +16,22 @@ function avged(Es)
     return real.([(Es[2*i+1]+Es[2*i+2])/2 for i = 0:div(length(Es),2)-1])
 end
 
+function my_finalize(t, Ψ, H, envs, Es, name)
+    Eafter = expectation_value(Ψ,H)
+    push!(Es, Eafter)
+
+    @save name Es Ψ
+    return (Ψ, envs)
+
+end
+
 truncation = 1.5
 mass = 0.3
 Delta_g = -0.15
 v = 0.0
-bogoliubov = true
+bogoliubov = false
 
-(mps, gs_envs) = get_groundstate_wo_symmetries(mass, Delta_g, v, [50 100], truncation, truncation+3.0; number_of_loops=7)
+(mps, gs_envs) = get_groundstate_wo_symmetries(mass, Delta_g, v, [50 100], truncation, truncation+3.0; number_of_loops=2)
 
 tot_bonddim = 0
 for i = 1:2
@@ -38,11 +49,11 @@ hamiltonian = get_thirring_hamiltonian(mass, Delta_g, v)
 
 N = 40
 
-k = 1.0
+k = -1.5
 X = [(2*pi)/N*i - pi for i = 0:N-1]
 σ = 0.7
-σ = 2/(sqrt(N*pi))
-x₀ = div(N,2)
+σ = 2/(sqrt(40*pi))
+x₀ = 17 # div(N,2)
 
 if bogoliubov
     (V₊,V₋) = V_matrix_bogoliubov(mps, N, mass; symmetric = false)
@@ -80,34 +91,30 @@ println("making H and envs")
 wps_envs = environments(wpstate, hamiltonian)
 envs = wps_envs
 
+E = expectation_value(wpstate,hamiltonian)
+Es = []
+push!(Es, E)
+
 dt = 0.8
-t_end = 4.0
-alg = TDVP()
+t_end = 0.8
+
+name = "SanderDM_Thesis_2324/test_wavepacket_right_moving_gs_mps_wo_symmetries_trunc_$(truncation)_mass_$(mass)_v_$(v)_Delta_g_$(Delta_g)_N_$(N)_k_$(k)_sigma_$(round(σ,digits=3))_dt_$(dt)_tend_$(t_end)_no_bogoliubov"
+
+alg = TDVP(; finalize=(t, Ψ, H, envs) -> my_finalize(t, Ψ, H, envs, Es, name))
 t_span = 0:dt:t_end
 
-# println("plotting")
-E = expectation_value(wpstate,hamiltonian)
-# plt = plot(1:N, avged(E), label = "before")
-# display(plt)
-
-
-Es = []
-
-push!(Es, E)
 
 println("time_evolve")
 
-for i = 1:5
+
+for i = 1:16
     global Ψ
     global envs
     (Ψ, envs) = time_evolve!(Ψ, hamiltonian, t_span, alg, envs; verbose=true);
 
-    Eafter = expectation_value(Ψ,hamiltonian)
-    push!(Es, Eafter)
     # plt = plot(1:N, avged(Eafter), label = "i = $(i)")
     # display(plt)
-    @save "SanderDM_Thesis_2324/test_wavepacket_right_moving_gs_mps_wo_symmetries_trunc_$(truncation)_mass_$(mass)_v_$(v)_Delta_g_$(Delta_g)_N_$(N)_k_$(k)_sigma_$(round(σ,digits=3))_dt_$(dt)_tend_$(t_end)" Es
 
 end
 
-@save "SanderDM_Thesis_2324/test_wavepacket_right_moving_gs_mps_wo_symmetries_trunc_$(truncation)_mass_$(mass)_v_$(v)_Delta_g_$(Delta_g)_N_$(N)_k_$(k)_sigma_$(round(σ,digits=3))_dt_$(dt)_tend_$(t_end)" Es
+# @save "SanderDM_Thesis_2324/test_wavepacket_right_moving_gs_mps_wo_symmetries_trunc_$(truncation)_mass_$(mass)_v_$(v)_Delta_g_$(Delta_g)_N_$(N)_k_$(k)_sigma_$(round(σ,digits=3))_dt_$(dt)_tend_$(t_end)" Es
