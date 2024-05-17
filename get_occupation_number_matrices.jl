@@ -129,7 +129,8 @@ function get_occupation_number_matrices_dirac_delta(mps, L, m)
         corr_bigger = correlator(mps, S⁺, S⁻, S_z_symm, i, 2*N+2)
         corr[i-1,:] = corr_bigger[2:2*N+1]
     end
-    
+    @assert (corr ≈ adjoint(corr))
+
     X = [(2*pi)/N*i - pi for i = 0:N-1]
     N̂ = zeros(Float64, N)
     
