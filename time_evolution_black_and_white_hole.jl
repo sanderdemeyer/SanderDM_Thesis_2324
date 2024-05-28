@@ -36,7 +36,7 @@ function my_finalize(t, Ψ, H, envs, name)
     return (Ψ, envs)
 end
 
-N = 20 # Number of sites
+N = 100 # Number of sites
 D = 20
 
 @assert N % 2 == 0

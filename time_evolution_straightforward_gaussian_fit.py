@@ -20,33 +20,34 @@ def linear(t, a, b):
 
 truncation = 1.5
 mass = 0.3
-Delta_g = 0.0
+Delta_g = -0.15
 v = 0.0
 
 N = 40 # 50
-dt = 0.2 # 0.8
-t_end = 1.0 # 0.8
-k = 1.0
+dt = 0.8 # 0.8
+t_end = 0.8 #4.0 # 0.8
+k = -1.5
 sigma = 0.178
 
-dt = 0.8
-t_end = 4.0
-N = 40
+left_moving = False
 
-left_moving = True
+bogoliubov = False
 
 if left_moving:
     k = 1.5
-    file = f"test_wavepacket_left_moving_gs_mps_wo_symmetries_trunc_{truncation}_mass_{mass}_v_{v}_Delta_g_{Delta_g}_N_{N}_k_{k}_sigma_{sigma}_dt_{dt}_tend_{t_end}_dict.h5"
+    file = f"data - wavepacket as state/test_wavepacket_left_moving_gs_mps_wo_symmetries_trunc_{truncation}_mass_{mass}_v_{v}_Delta_g_{Delta_g}_N_{N}_k_{k}_sigma_{sigma}_dt_{dt}_tend_{t_end}"
 else:
     k = -1.5
-    file = f"test_wavepacket_gs_mps_wo_symmetries_trunc_{truncation}_mass_{mass}_v_{v}_Delta_g_{Delta_g}_N_{N}_k_{k}_sigma_{sigma}_dt_{dt}_tend_{t_end}_dict.h5"
-    file = f"test_wavepacket_right_moving_gs_mps_wo_symmetries_trunc_{truncation}_mass_{mass}_v_{v}_Delta_g_{Delta_g}_N_{N}_k_{k}_sigma_{sigma}_dt_{dt}_tend_{t_end}_dict.h5"
+    file = f"data - wavepacket as state/test_wavepacket_gs_mps_wo_symmetries_trunc_{truncation}_mass_{mass}_v_{v}_Delta_g_{Delta_g}_N_{N}_k_{k}_sigma_{sigma}_dt_{dt}_tend_{t_end}"
+    file = f"data - wavepacket as state/test_wavepacket_right_moving_gs_mps_wo_symmetries_trunc_{truncation}_mass_{mass}_v_{v}_Delta_g_{Delta_g}_N_{N}_k_{k}_sigma_{sigma}_dt_{dt}_tend_{t_end}"
 
-
+if not bogoliubov:
+    file = file + "_no_bogoliubov_dict.h5"
+else:
+    file = file + "_dict.h5"
 # file = h5py.File(file)
 
-maximum = 5
+maximum = 17
 
 Es = []
 with h5py.File(file, 'r') as f:
@@ -64,7 +65,8 @@ b = [1, 2, 3, 4]
 
 
 for i in range(times):
-    plt.plot([x for x in X[excluded:L-1-excluded]], Es[i][excluded:L-1-excluded], label = f"t = {round(t_end*i,2)}")
+    if i % 4 == 0:
+        plt.plot([x for x in X[excluded:L-1-excluded]], Es[i][excluded:L-1-excluded], label = f"t = {round(t_end*i,2)}")
 # plt.plot(X, [gaussian(x, 22, 3, 0.25, -0.36) for x in X])
 plt.xlabel("Position i", fontsize = 15)
 plt.ylabel("Averaged energy", fontsize = 15)
@@ -73,7 +75,7 @@ plt.show()
 
 optimal_values = []
 for i in range(times):
-    popt, pcov = curve_fit(gaussian, X[excluded:L-1-excluded], Es[i][excluded:L-1-excluded], p0 = [12, 3, 0.25, -0.36])
+    popt, pcov = curve_fit(gaussian, X[excluded:L-1-excluded], Es[i][excluded:L-1-excluded], p0 = [22, 3, 0.25, -0.36])
     optimal_values.append(popt)
 optimal_values = np.array(optimal_values)
 print(optimal_values)
@@ -100,6 +102,15 @@ plt.xlabel("Time", fontsize = 15)
 plt.ylabel("Peak position", fontsize = 15)
 plt.legend()
 plt.show()
+
+
+plt.scatter([(t_end*i) for i in range(times)], [np.log10(optimal_values[i][2]) for i in range(times)], label = "data")
+plt.show()
+
+with open('bog_true.csv', 'w', newline='') as file:
+    writer = csv.writer(file)
+    print(np.array([[(t_end*i) for i in range(times)], [(optimal_values[i][2]) for i in range(times)]]))
+    writer.writerows(np.array([[(t_end*i) for i in range(times)], [(optimal_values[i][2]) for i in range(times)]]))
 
 
 """

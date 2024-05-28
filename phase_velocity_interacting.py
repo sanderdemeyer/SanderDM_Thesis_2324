@@ -9,7 +9,7 @@ v = 0.0
 trunc = 4.0
 bounds_k = np.pi/2
 
-file = f"Derivative_info_Dispersion_Delta_m_{am_tilde_0}_delta_g_{Delta_g}_v_{v}_trunc_{trunc}_all_sectors_newv_more.csv"
+file = f"SanderDM_Thesis_2324/data/Derivative_info_Dispersion_Delta_m_{am_tilde_0}_delta_g_{Delta_g}_v_{v}_trunc_{trunc}_all_sectors_newv_more.csv"
 
 energies = []
 
@@ -43,8 +43,14 @@ popt, pcov = curve_fit(polynomial, k_values, energies, p0 = p0)#, method = 'trf'
 
 k_values_finer = np.linspace(-bounds_k,bounds_k, 1000)
 
-plt.plot(2*k_values_finer, [polynomial(x, *popt) for x in k_values_finer], label = 'polynomial fit', c = 'red')
-plt.scatter(2*k_values, energies, label = 'data', s = 3)
+split = True
+if split:
+    plt.plot(2*k_values, [e - Delta_g for e in energies], label = 'U(1) sector +1')
+    plt.plot(2*k_values, [e + Delta_g for e in energies], label = 'U(1) sector -1')
+else:
+    plt.plot(2*k_values_finer, [polynomial(x, *popt) for x in k_values_finer], label = 'polynomial fit', c = 'red')
+    plt.scatter(2*k_values, energies, label = 'data', s = 3)
+
 plt.xlabel(r"momentum $k$", fontsize = 15)
 plt.ylabel("energy", fontsize = 15)
 plt.legend(fontsize=12)
